@@ -20,7 +20,7 @@ const App = () => {
       case 'dashboard':
         return <Dashboard />;
       case 'registro':
-        return <DailyRegistry onSave={addDailyRecord} />;
+        return <DailyRegistry onSave={addDailyRecord} carConfig={carConfig} />;
       case 'configuracoes':
         return <CarConfig config={carConfig} onSave={saveCarConfig} />;
       default:

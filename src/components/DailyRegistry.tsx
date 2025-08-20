@@ -1,15 +1,16 @@
-import { useState } from "react";
-import { Calendar, Clock, Route, DollarSign, Plus, Trash2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Calendar, Clock, Route, DollarSign, Plus, Trash2, Fuel } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { DailyRecord, Expense } from "@/hooks/useDriverData";
+import { DailyRecord, Expense, CarConfig } from "@/hooks/useDriverData";
 
 interface DailyRegistryProps {
   onSave: (record: Omit<DailyRecord, 'id'>) => void;
+  carConfig: CarConfig;
 }
 
 const expenseCategories = [
@@ -22,7 +23,7 @@ const expenseCategories = [
   'Outros'
 ];
 
-export const DailyRegistry = ({ onSave }: DailyRegistryProps) => {
+export const DailyRegistry = ({ onSave, carConfig }: DailyRegistryProps) => {
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     tempoTrabalhado: { horas: 0, minutos: 0 },
@@ -33,12 +34,38 @@ export const DailyRegistry = ({ onSave }: DailyRegistryProps) => {
 
   const [gastos, setGastos] = useState<Expense[]>([]);
   const [novoGasto, setNovoGasto] = useState({ valor: 0, categoria: '' });
+  const [combustivelCalculado, setCombustivelCalculado] = useState<number>(0);
   const { toast } = useToast();
+
+  // Calcular combustível automaticamente quando KM ou configuração mudar
+  useEffect(() => {
+    if (formData.kmRodados > 0 && carConfig.eficienciaKmL > 0 && carConfig.precoCombustivel > 0) {
+      const litrosConsumidos = formData.kmRodados / carConfig.eficienciaKmL;
+      const valorCombustivel = litrosConsumidos * carConfig.precoCombustivel;
+      setCombustivelCalculado(valorCombustivel);
+    } else {
+      setCombustivelCalculado(0);
+    }
+  }, [formData.kmRodados, carConfig.eficienciaKmL, carConfig.precoCombustivel]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     const tempoTotalMinutos = formData.tempoTrabalhado.horas * 60 + formData.tempoTrabalhado.minutos;
+    
+    // Adicionar combustível calculado automaticamente aos gastos
+    const gastosComCombustivel = [...gastos];
+    if (combustivelCalculado > 0) {
+      // Verificar se já existe um gasto de combustível adicionado manualmente
+      const combustivelExistente = gastos.find(g => g.categoria === 'Combustível');
+      if (!combustivelExistente) {
+        gastosComCombustivel.push({
+          id: `combustivel-${Date.now()}`,
+          valor: combustivelCalculado,
+          categoria: 'Combustível (Auto)',
+        });
+      }
+    }
     
     const record: Omit<DailyRecord, 'id'> = {
       date: formData.date,
@@ -46,7 +73,7 @@ export const DailyRegistry = ({ onSave }: DailyRegistryProps) => {
       numCorridas: formData.numCorridas,
       kmRodados: formData.kmRodados,
       valorBruto: formData.valorBruto,
-      gastos,
+      gastos: gastosComCombustivel,
     };
 
     onSave(record);
@@ -84,6 +111,7 @@ export const DailyRegistry = ({ onSave }: DailyRegistryProps) => {
   };
 
   const totalGastos = gastos.reduce((sum, gasto) => sum + gasto.valor, 0);
+  const totalComCombustivel = totalGastos + (combustivelCalculado > 0 && !gastos.find(g => g.categoria === 'Combustível') ? combustivelCalculado : 0);
 
   return (
     <div className="p-4 pb-20 max-w-2xl mx-auto">
@@ -201,6 +229,24 @@ export const DailyRegistry = ({ onSave }: DailyRegistryProps) => {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
+            {/* Combustível calculado automaticamente */}
+            {combustivelCalculado > 0 && (
+              <div className="bg-success-light border border-success/20 p-3 rounded-md">
+                <div className="flex items-center gap-2 mb-2">
+                  <Fuel className="h-4 w-4 text-success" />
+                  <span className="font-medium text-success">Combustível Calculado Automaticamente</span>
+                </div>
+                <div className="text-sm text-muted-foreground mb-2">
+                  {formData.kmRodados > 0 && carConfig.eficienciaKmL > 0 && (
+                    <>
+                      {formData.kmRodados} km ÷ {carConfig.eficienciaKmL} km/L = {(formData.kmRodados / carConfig.eficienciaKmL).toFixed(2)} litros<br />
+                      {(formData.kmRodados / carConfig.eficienciaKmL).toFixed(2)} litros × R$ {carConfig.precoCombustivel.toFixed(2)}/L
+                    </>
+                  )}
+                </div>
+                <div className="font-medium text-success">R$ {combustivelCalculado.toFixed(2)}</div>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
               <Input
                 type="number"
@@ -243,8 +289,14 @@ export const DailyRegistry = ({ onSave }: DailyRegistryProps) => {
                     </Button>
                   </div>
                 ))}
-                <div className="text-right font-medium">
-                  Total de gastos: R$ {totalGastos.toFixed(2)}
+                <div className="text-right space-y-1">
+                  <div className="text-muted-foreground">Gastos manuais: R$ {totalGastos.toFixed(2)}</div>
+                  {combustivelCalculado > 0 && !gastos.find(g => g.categoria === 'Combustível') && (
+                    <div className="text-muted-foreground">Combustível (auto): R$ {combustivelCalculado.toFixed(2)}</div>
+                  )}
+                  <div className="font-medium border-t pt-1">
+                    Total de gastos: R$ {totalComCombustivel.toFixed(2)}
+                  </div>
                 </div>
               </div>
             )}

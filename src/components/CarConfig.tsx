@@ -114,6 +114,19 @@ export const CarConfig = ({ config, onSave }: CarConfigProps) => {
               </div>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="preco-combustivel">Preço do Combustível (R$/L)</Label>
+              <Input
+                id="preco-combustivel"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                value={formData.precoCombustivel || ''}
+                onChange={(e) => handleChange('precoCombustivel', e.target.value)}
+              />
+            </div>
+
             <Button type="submit" className="w-full">
               <Save className="h-4 w-4 mr-2" />
               Salvar Configurações

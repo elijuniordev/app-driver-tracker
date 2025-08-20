@@ -6,6 +6,7 @@ export interface CarConfig {
   limiteKmSemanal: number;
   valorKmExcedido: number;
   eficienciaKmL: number;
+  precoCombustivel: number;
 }
 
 export interface DailyRecord {
@@ -35,6 +36,7 @@ const defaultCarConfig: CarConfig = {
   limiteKmSemanal: 0,
   valorKmExcedido: 0,
   eficienciaKmL: 0,
+  precoCombustivel: 0,
 };
 
 export const useDriverData = () => {
