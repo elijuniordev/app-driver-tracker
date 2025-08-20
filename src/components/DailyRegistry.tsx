@@ -30,6 +30,7 @@ export const DailyRegistry = ({ onSave, carConfig }: DailyRegistryProps) => {
     numCorridas: 0,
     kmRodados: 0,
     valorBruto: 0,
+    precoCombustivel: 0,
   });
 
   const [gastos, setGastos] = useState<Expense[]>([]);
@@ -37,16 +38,16 @@ export const DailyRegistry = ({ onSave, carConfig }: DailyRegistryProps) => {
   const [combustivelCalculado, setCombustivelCalculado] = useState<number>(0);
   const { toast } = useToast();
 
-  // Calcular combustível automaticamente quando KM ou configuração mudar
+  // Calcular combustível automaticamente quando KM ou preço mudar
   useEffect(() => {
-    if (formData.kmRodados > 0 && carConfig.eficienciaKmL > 0 && carConfig.precoCombustivel > 0) {
+    if (formData.kmRodados > 0 && carConfig.eficienciaKmL > 0 && formData.precoCombustivel > 0) {
       const litrosConsumidos = formData.kmRodados / carConfig.eficienciaKmL;
-      const valorCombustivel = litrosConsumidos * carConfig.precoCombustivel;
+      const valorCombustivel = litrosConsumidos * formData.precoCombustivel;
       setCombustivelCalculado(valorCombustivel);
     } else {
       setCombustivelCalculado(0);
     }
-  }, [formData.kmRodados, carConfig.eficienciaKmL, carConfig.precoCombustivel]);
+  }, [formData.kmRodados, formData.precoCombustivel, carConfig.eficienciaKmL]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -85,6 +86,7 @@ export const DailyRegistry = ({ onSave, carConfig }: DailyRegistryProps) => {
       numCorridas: 0,
       kmRodados: 0,
       valorBruto: 0,
+      precoCombustivel: 0,
     });
     setGastos([]);
     
@@ -217,6 +219,19 @@ export const DailyRegistry = ({ onSave, carConfig }: DailyRegistryProps) => {
                 onChange={(e) => setFormData(prev => ({ ...prev, valorBruto: parseFloat(e.target.value) || 0 }))}
               />
             </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="preco-combustivel">Preço do Combustível Hoje (R$/L)</Label>
+              <Input
+                id="preco-combustivel"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Ex: 5.50"
+                value={formData.precoCombustivel || ''}
+                onChange={(e) => setFormData(prev => ({ ...prev, precoCombustivel: parseFloat(e.target.value) || 0 }))}
+              />
+            </div>
           </CardContent>
         </Card>
 
@@ -240,7 +255,7 @@ export const DailyRegistry = ({ onSave, carConfig }: DailyRegistryProps) => {
                   {formData.kmRodados > 0 && carConfig.eficienciaKmL > 0 && (
                     <>
                       {formData.kmRodados} km ÷ {carConfig.eficienciaKmL} km/L = {(formData.kmRodados / carConfig.eficienciaKmL).toFixed(2)} litros<br />
-                      {(formData.kmRodados / carConfig.eficienciaKmL).toFixed(2)} litros × R$ {carConfig.precoCombustivel.toFixed(2)}/L
+                      {(formData.kmRodados / carConfig.eficienciaKmL).toFixed(2)} litros × R$ {formData.precoCombustivel.toFixed(2)}/L
                     </>
                   )}
                 </div>
