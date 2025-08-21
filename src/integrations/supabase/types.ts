@@ -14,7 +14,83 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      entradas_diarias: {
+        Row: {
+          consumo_km_l: number
+          created_at: string | null
+          data: string
+          ganhos_99: number
+          ganhos_uber: number
+          id: number
+          km_rodados: number
+          tempo_trabalhado: number
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          consumo_km_l?: number
+          created_at?: string | null
+          data: string
+          ganhos_99?: number
+          ganhos_uber?: number
+          id?: number
+          km_rodados?: number
+          tempo_trabalhado?: number
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          consumo_km_l?: number
+          created_at?: string | null
+          data?: string
+          ganhos_99?: number
+          ganhos_uber?: number
+          id?: number
+          km_rodados?: number
+          tempo_trabalhado?: number
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      gastos_avulsos: {
+        Row: {
+          categoria: string
+          created_at: string | null
+          data: string
+          entrada_diaria_id: number | null
+          id: number
+          user_id: string
+          valor: number
+        }
+        Insert: {
+          categoria: string
+          created_at?: string | null
+          data: string
+          entrada_diaria_id?: number | null
+          id?: number
+          user_id: string
+          valor?: number
+        }
+        Update: {
+          categoria?: string
+          created_at?: string | null
+          data?: string
+          entrada_diaria_id?: number | null
+          id?: number
+          user_id?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gastos_avulsos_entrada_diaria_id_fkey"
+            columns: ["entrada_diaria_id"]
+            isOneToOne: false
+            referencedRelation: "entradas_diarias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
