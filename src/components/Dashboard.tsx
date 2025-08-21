@@ -110,9 +110,21 @@ export const Dashboard = () => {
         <div className="space-y-6">
           {dailyData ? (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <StatCard
-                  title="Ganho Bruto"
+                  title="Ganhos Uber"
+                  value={`R$ ${dailyData.ganhosUber.toFixed(2)}`}
+                  icon={DollarSign}
+                  variant="success"
+                />
+                <StatCard
+                  title="Ganhos 99"
+                  value={`R$ ${dailyData.ganhos99.toFixed(2)}`}
+                  icon={DollarSign}
+                  variant="success"
+                />
+                <StatCard
+                  title="Total Bruto"
                   value={`R$ ${dailyData.ganhosBrutos.toFixed(2)}`}
                   icon={DollarSign}
                   variant="success"
@@ -164,10 +176,60 @@ export const Dashboard = () => {
       {/* Weekly View */}
       {viewMode === 'weekly' && (
         <div className="space-y-6">
+          <div className="text-sm text-muted-foreground mb-4">
+            Semana de {weeklyData.periodoSemana.inicio} a {weeklyData.periodoSemana.fim}
+          </div>
+          
+          {/* Análise Comparativa por Plataforma */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Análise Comparativa Semanal</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-primary">Uber</h4>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Ganhos:</span>
+                      <span className="font-medium">R$ {weeklyData.ganhosUber.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Ganho/hora:</span>
+                      <span className="font-medium">R$ {weeklyData.ganhoPorHoraUber.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-primary">99</h4>
+                  <div className="space-y-2">
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Ganhos:</span>
+                      <span className="font-medium">R$ {weeklyData.ganhos99.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-sm text-muted-foreground">Ganho/hora:</span>
+                      <span className="font-medium">R$ {weeklyData.ganhoPorHora99.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 pt-4 border-t">
+                <div className="text-sm text-muted-foreground">
+                  Plataforma mais rentável: <span className="font-medium text-foreground">
+                    {weeklyData.ganhoPorHoraUber > weeklyData.ganhoPorHora99 ? 'Uber' : 
+                     weeklyData.ganhoPorHora99 > weeklyData.ganhoPorHoraUber ? '99' : 'Empate'}
+                  </span>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <StatCard
-              title="Ganho Bruto Semanal"
+              title="Total Bruto Semanal"
               value={`R$ ${weeklyData.ganhosBrutos.toFixed(2)}`}
+              subtitle={`Uber: R$ ${weeklyData.ganhosUber.toFixed(2)} | 99: R$ ${weeklyData.ganhos99.toFixed(2)}`}
               icon={DollarSign}
               variant="success"
             />

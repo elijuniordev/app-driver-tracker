@@ -5,7 +5,6 @@ export interface CarConfig {
   aluguelSemanal: number;
   limiteKmSemanal: number;
   valorKmExcedido: number;
-  eficienciaKmL: number;
 }
 
 export interface DailyRecord {
@@ -14,7 +13,9 @@ export interface DailyRecord {
   tempoTrabalhado: number; // em minutos
   numCorridas: number;
   kmRodados: number;
-  valorBruto: number;
+  ganhosUber: number;
+  ganhos99: number;
+  consumoKmL: number;
   gastos: Expense[];
 }
 
@@ -34,7 +35,6 @@ const defaultCarConfig: CarConfig = {
   aluguelSemanal: 0,
   limiteKmSemanal: 0,
   valorKmExcedido: 0,
-  eficienciaKmL: 0,
 };
 
 export const useDriverData = () => {
@@ -92,12 +92,15 @@ export const useDriverData = () => {
     if (!record) return null;
 
     const totalGastos = record.gastos.reduce((sum, gasto) => sum + gasto.valor, 0);
-    const lucroLiquido = record.valorBruto - totalGastos;
+    const ganhosBrutos = record.ganhosUber + record.ganhos99;
+    const lucroLiquido = ganhosBrutos - totalGastos;
     const ganhoPorHora = record.tempoTrabalhado > 0 ? lucroLiquido / (record.tempoTrabalhado / 60) : 0;
     const ganhoPorMinuto = record.tempoTrabalhado > 0 ? lucroLiquido / record.tempoTrabalhado : 0;
 
     return {
-      ganhosBrutos: record.valorBruto,
+      ganhosBrutos,
+      ganhosUber: record.ganhosUber,
+      ganhos99: record.ganhos99,
       gastosTotal: totalGastos,
       lucroLiquido,
       ganhoPorHora,
@@ -109,16 +112,24 @@ export const useDriverData = () => {
   };
 
   const getWeeklyAnalysis = (startDate: string) => {
+    // Garantir que startDate seja uma segunda-feira
     const start = new Date(startDate);
+    const dayOfWeek = start.getDay(); // 0 = domingo, 1 = segunda
+    const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+    start.setDate(start.getDate() + mondayOffset);
+    
     const end = new Date(start);
-    end.setDate(start.getDate() + 6);
+    end.setDate(start.getDate() + 6); // domingo
 
     const weekRecords = dailyRecords.filter(record => {
       const recordDate = new Date(record.date);
       return recordDate >= start && recordDate <= end;
     });
 
-    const ganhosBrutos = weekRecords.reduce((sum, record) => sum + record.valorBruto, 0);
+    const ganhosUber = weekRecords.reduce((sum, record) => sum + record.ganhosUber, 0);
+    const ganhos99 = weekRecords.reduce((sum, record) => sum + record.ganhos99, 0);
+    const ganhosBrutos = ganhosUber + ganhos99;
+    
     const gastosRegistrados = weekRecords.reduce((sum, record) => 
       sum + record.gastos.reduce((gastoSum, gasto) => gastoSum + gasto.valor, 0), 0
     );
@@ -130,8 +141,15 @@ export const useDriverData = () => {
     const gastosTotal = gastosRegistrados + carConfig.aluguelSemanal + custoKmExcedido;
     const lucroLiquido = ganhosBrutos - gastosTotal;
 
+    // Análise comparativa por plataforma
+    const tempoTotalTrabalhado = weekRecords.reduce((sum, record) => sum + record.tempoTrabalhado, 0);
+    const ganhoPorHoraUber = tempoTotalTrabalhado > 0 ? (ganhosUber / (tempoTotalTrabalhado / 60)) : 0;
+    const ganhoPorHora99 = tempoTotalTrabalhado > 0 ? (ganhos99 / (tempoTotalTrabalhado / 60)) : 0;
+
     return {
       ganhosBrutos,
+      ganhosUber,
+      ganhos99,
       gastosRegistrados,
       aluguelSemanal: carConfig.aluguelSemanal,
       custoKmExcedido,
@@ -140,6 +158,13 @@ export const useDriverData = () => {
       kmTotais,
       kmExcedidos,
       limiteKm: carConfig.limiteKmSemanal,
+      ganhoPorHoraUber,
+      ganhoPorHora99,
+      tempoTotalTrabalhado,
+      periodoSemana: {
+        inicio: start.toISOString().split('T')[0],
+        fim: end.toISOString().split('T')[0],
+      },
     };
   };
 

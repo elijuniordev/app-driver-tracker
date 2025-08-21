@@ -86,32 +86,17 @@ export const CarConfig = ({ config, onSave }: CarConfigProps) => {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="valor-km">Valor por KM Excedido (R$)</Label>
-                <Input
-                  id="valor-km"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="0.00"
-                  value={formData.valorKmExcedido || ''}
-                  onChange={(e) => handleChange('valorKmExcedido', e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="eficiencia">Eficiência (KM/L)</Label>
-                <Input
-                  id="eficiencia"
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  placeholder="0.0"
-                  value={formData.eficienciaKmL || ''}
-                  onChange={(e) => handleChange('eficienciaKmL', e.target.value)}
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="valor-km">Valor por KM Excedido (R$)</Label>
+              <Input
+                id="valor-km"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="0.00"
+                value={formData.valorKmExcedido || ''}
+                onChange={(e) => handleChange('valorKmExcedido', e.target.value)}
+              />
             </div>
 
             <Button type="submit" className="w-full">
