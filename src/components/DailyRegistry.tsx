@@ -62,7 +62,7 @@ export const DailyRegistry = ({ onSave, carConfig }: DailyRegistryProps) => {
       const combustivelExistente = gastos.find(g => g.categoria === 'Combustível');
       if (!combustivelExistente) {
         gastosComCombustivel.push({
-          id: `combustivel-${Date.now()}`,
+          id: Date.now(),
           valor: combustivelCalculado,
           categoria: 'Combustível (Auto)',
         });
@@ -104,7 +104,7 @@ export const DailyRegistry = ({ onSave, carConfig }: DailyRegistryProps) => {
   const adicionarGasto = () => {
     if (novoGasto.valor > 0 && novoGasto.categoria) {
       const gasto: Expense = {
-        id: Date.now().toString(),
+        id: Date.now(),
         valor: novoGasto.valor,
         categoria: novoGasto.categoria,
       };
@@ -113,7 +113,7 @@ export const DailyRegistry = ({ onSave, carConfig }: DailyRegistryProps) => {
     }
   };
 
-  const removerGasto = (id: string) => {
+  const removerGasto = (id: number) => {
     setGastos(gastos.filter(g => g.id !== id));
   };
 

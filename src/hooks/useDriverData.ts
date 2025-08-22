@@ -1,4 +1,6 @@
 import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 export interface CarConfig {
   modelo: string;
@@ -8,7 +10,7 @@ export interface CarConfig {
 }
 
 export interface DailyRecord {
-  id: string;
+  id: number;
   date: string;
   tempoTrabalhado: number; // em minutos
   numCorridas: number;
@@ -20,15 +22,13 @@ export interface DailyRecord {
 }
 
 export interface Expense {
-  id: string;
+  id: number;
   valor: number;
   categoria: string;
+  entrada_diaria_id?: number;
 }
 
-const STORAGE_KEYS = {
-  CAR_CONFIG: 'driver-tracker-car-config',
-  DAILY_RECORDS: 'driver-tracker-daily-records',
-};
+const STORAGE_KEY = 'driver-tracker-car-config';
 
 const defaultCarConfig: CarConfig = {
   modelo: '',
@@ -40,50 +40,272 @@ const defaultCarConfig: CarConfig = {
 export const useDriverData = () => {
   const [carConfig, setCarConfig] = useState<CarConfig>(defaultCarConfig);
   const [dailyRecords, setDailyRecords] = useState<DailyRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+  const { toast } = useToast();
 
-  // Load data from localStorage on mount
+  // Load car config from localStorage and daily records from Supabase on mount
   useEffect(() => {
-    const savedCarConfig = localStorage.getItem(STORAGE_KEYS.CAR_CONFIG);
-    const savedDailyRecords = localStorage.getItem(STORAGE_KEYS.DAILY_RECORDS);
-
+    const savedCarConfig = localStorage.getItem(STORAGE_KEY);
     if (savedCarConfig) {
       setCarConfig(JSON.parse(savedCarConfig));
     }
-
-    if (savedDailyRecords) {
-      setDailyRecords(JSON.parse(savedDailyRecords));
-    }
+    
+    fetchDailyRecords();
   }, []);
+
+  const fetchDailyRecords = async () => {
+    try {
+      setLoading(true);
+      
+      // Get user session
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        console.log('User not authenticated');
+        return;
+      }
+
+      // Fetch daily entries
+      const { data: entradas, error: entradasError } = await supabase
+        .from('entradas_diarias')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('data', { ascending: false });
+
+      if (entradasError) {
+        console.error('Error fetching daily entries:', entradasError);
+        return;
+      }
+
+      // Fetch expenses for all entries
+      const { data: gastos, error: gastosError } = await supabase
+        .from('gastos_avulsos')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (gastosError) {
+        console.error('Error fetching expenses:', gastosError);
+        return;
+      }
+
+      // Transform data to match interface
+      const records: DailyRecord[] = entradas?.map(entrada => ({
+        id: entrada.id,
+        date: entrada.data,
+        tempoTrabalhado: entrada.tempo_trabalhado,
+        numCorridas: 0, // Will be calculated or added later
+        kmRodados: entrada.km_rodados,
+        ganhosUber: entrada.ganhos_uber,
+        ganhos99: entrada.ganhos_99,
+        consumoKmL: entrada.consumo_km_l,
+        gastos: gastos?.filter(gasto => gasto.entrada_diaria_id === entrada.id).map(gasto => ({
+          id: gasto.id,
+          valor: gasto.valor,
+          categoria: gasto.categoria,
+          entrada_diaria_id: gasto.entrada_diaria_id
+        })) || []
+      })) || [];
+
+      setDailyRecords(records);
+    } catch (error) {
+      console.error('Error fetching data:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Helper functions
   const saveCarConfig = (config: CarConfig) => {
     setCarConfig(config);
-    localStorage.setItem(STORAGE_KEYS.CAR_CONFIG, JSON.stringify(config));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
   };
 
-  const addDailyRecord = (record: Omit<DailyRecord, 'id'>) => {
-    const newRecord: DailyRecord = {
-      ...record,
-      id: Date.now().toString(),
-    };
+  const addDailyRecord = async (record: Omit<DailyRecord, 'id'>) => {
+    try {
+      setLoading(true);
+      
+      // Get user session
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: "Usuário não autenticado"
+        });
+        return;
+      }
 
-    const updatedRecords = [...dailyRecords, newRecord];
-    setDailyRecords(updatedRecords);
-    localStorage.setItem(STORAGE_KEYS.DAILY_RECORDS, JSON.stringify(updatedRecords));
+      // Insert daily entry
+      const { data: entrada, error: entradaError } = await supabase
+        .from('entradas_diarias')
+        .insert({
+          data: record.date,
+          ganhos_uber: record.ganhosUber,
+          ganhos_99: record.ganhos99,
+          km_rodados: record.kmRodados,
+          tempo_trabalhado: record.tempoTrabalhado,
+          consumo_km_l: record.consumoKmL,
+          user_id: user.id
+        })
+        .select()
+        .single();
+
+      if (entradaError) {
+        console.error('Error inserting daily entry:', entradaError);
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: "Erro ao salvar registro diário"
+        });
+        return;
+      }
+
+      // Insert expenses
+      if (record.gastos.length > 0) {
+        const gastosToInsert = record.gastos.map(gasto => ({
+          data: record.date,
+          valor: gasto.valor,
+          categoria: gasto.categoria,
+          entrada_diaria_id: entrada.id,
+          user_id: user.id
+        }));
+
+        const { error: gastosError } = await supabase
+          .from('gastos_avulsos')
+          .insert(gastosToInsert);
+
+        if (gastosError) {
+          console.error('Error inserting expenses:', gastosError);
+        }
+      }
+
+      // Refresh data
+      await fetchDailyRecords();
+      
+      toast({
+        title: "Sucesso",
+        description: "Registro salvo com sucesso!"
+      });
+    } catch (error) {
+      console.error('Error adding daily record:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Erro ao salvar registro"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const updateDailyRecord = (id: string, record: Partial<DailyRecord>) => {
-    const updatedRecords = dailyRecords.map(r => 
-      r.id === id ? { ...r, ...record } : r
-    );
-    setDailyRecords(updatedRecords);
-    localStorage.setItem(STORAGE_KEYS.DAILY_RECORDS, JSON.stringify(updatedRecords));
+  const updateDailyRecord = async (id: number, record: Partial<DailyRecord>) => {
+    try {
+      setLoading(true);
+      
+      // Get user session
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: "Usuário não autenticado"
+        });
+        return;
+      }
+
+      // Update daily entry
+      const updateData: any = {};
+      if (record.ganhosUber !== undefined) updateData.ganhos_uber = record.ganhosUber;
+      if (record.ganhos99 !== undefined) updateData.ganhos_99 = record.ganhos99;
+      if (record.kmRodados !== undefined) updateData.km_rodados = record.kmRodados;
+      if (record.tempoTrabalhado !== undefined) updateData.tempo_trabalhado = record.tempoTrabalhado;
+      if (record.consumoKmL !== undefined) updateData.consumo_km_l = record.consumoKmL;
+
+      if (Object.keys(updateData).length > 0) {
+        const { error } = await supabase
+          .from('entradas_diarias')
+          .update(updateData)
+          .eq('id', id)
+          .eq('user_id', user.id);
+
+        if (error) {
+          console.error('Error updating daily entry:', error);
+          toast({
+            variant: "destructive",
+            title: "Erro",
+            description: "Erro ao atualizar registro"
+          });
+          return;
+        }
+      }
+
+      // Refresh data
+      await fetchDailyRecords();
+      
+      toast({
+        title: "Sucesso",
+        description: "Registro atualizado com sucesso!"
+      });
+    } catch (error) {
+      console.error('Error updating daily record:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Erro ao atualizar registro"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const deleteDailyRecord = (id: string) => {
-    const updatedRecords = dailyRecords.filter(r => r.id !== id);
-    setDailyRecords(updatedRecords);
-    localStorage.setItem(STORAGE_KEYS.DAILY_RECORDS, JSON.stringify(updatedRecords));
+  const deleteDailyRecord = async (id: number) => {
+    try {
+      setLoading(true);
+      
+      // Get user session
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: "Usuário não autenticado"
+        });
+        return;
+      }
+
+      // Delete daily entry (expenses will be deleted automatically due to CASCADE)
+      const { error } = await supabase
+        .from('entradas_diarias')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id);
+
+      if (error) {
+        console.error('Error deleting daily entry:', error);
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: "Erro ao excluir registro"
+        });
+        return;
+      }
+
+      // Refresh data
+      await fetchDailyRecords();
+      
+      toast({
+        title: "Sucesso",
+        description: "Registro excluído com sucesso!"
+      });
+    } catch (error) {
+      console.error('Error deleting daily record:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Erro ao excluir registro"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Analysis functions
@@ -171,11 +393,13 @@ export const useDriverData = () => {
   return {
     carConfig,
     dailyRecords,
+    loading,
     saveCarConfig,
     addDailyRecord,
     updateDailyRecord,
     deleteDailyRecord,
     getDailyAnalysis,
     getWeeklyAnalysis,
+    fetchDailyRecords,
   };
 };
