@@ -8,6 +8,8 @@ import { Dashboard } from "@/components/Dashboard";
 import { DailyRegistry } from "@/components/DailyRegistry";
 import { CarConfig } from "@/components/CarConfig";
 import { Auth } from "@/components/Auth";
+import { History } from "@/components/History";
+import { IndividualRides } from "@/components/IndividualRides";
 import { useDriverData } from "@/hooks/useDriverData";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
@@ -16,7 +18,7 @@ import { Loader2 } from "lucide-react";
 const queryClient = new QueryClient();
 
 const App = () => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'registro' | 'configuracoes'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'registro' | 'configuracoes' | 'historico' | 'corridas'>('dashboard');
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const { carConfig, saveCarConfig, addDailyRecord, fetchDailyRecords } = useDriverData();
@@ -71,8 +73,12 @@ const App = () => {
     switch (activeTab) {
       case 'dashboard':
         return <Dashboard />;
+      case 'corridas':
+        return <IndividualRides />;
       case 'registro':
         return <DailyRegistry onSave={addDailyRecord} carConfig={carConfig} />;
+      case 'historico':
+        return <History />;
       case 'configuracoes':
         return <CarConfig config={carConfig} onSave={saveCarConfig} />;
       default:

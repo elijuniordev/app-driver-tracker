@@ -3,9 +3,10 @@ import { TrendingUp, TrendingDown, Clock, Route, DollarSign, AlertTriangle } fro
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useDriverData } from "@/hooks/useDriverData";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 export const Dashboard = () => {
-  const { getDailyAnalysis, getWeeklyAnalysis } = useDriverData();
+  const { getDailyAnalysis, getWeeklyAnalysis, dailyRecords } = useDriverData();
   const [viewMode, setViewMode] = useState<'daily' | 'weekly'>('daily');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -19,6 +20,59 @@ export const Dashboard = () => {
 
   const dailyData = getDailyAnalysis(selectedDate);
   const weeklyData = getWeeklyAnalysis(getWeekStart(selectedDate));
+
+  // Prepare weekly earnings chart data
+  const getWeeklyEarningsData = () => {
+    const weekStart = new Date(getWeekStart(selectedDate));
+    const weekData = [];
+    
+    for (let i = 0; i < 7; i++) {
+      const currentDate = new Date(weekStart);
+      currentDate.setDate(weekStart.getDate() + i);
+      const dateString = currentDate.toISOString().split('T')[0];
+      const dayData = getDailyAnalysis(dateString);
+      
+      weekData.push({
+        dia: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][currentDate.getDay()],
+        uber: dayData?.ganhosUber || 0,
+        '99': dayData?.ganhos99 || 0,
+        total: (dayData?.ganhosUber || 0) + (dayData?.ganhos99 || 0)
+      });
+    }
+    return weekData;
+  };
+
+  // Prepare expense distribution chart data
+  const getExpenseDistributionData = () => {
+    const weekStart = getWeekStart(selectedDate);
+    const weekEnd = new Date(weekStart);
+    weekEnd.setDate(new Date(weekStart).getDate() + 6);
+    
+    const weekRecords = dailyRecords.filter(record => {
+      const recordDate = new Date(record.date);
+      return recordDate >= new Date(weekStart) && recordDate <= weekEnd;
+    });
+
+    const expenseCategories: { [key: string]: number } = {};
+    
+    weekRecords.forEach(record => {
+      record.gastos.forEach(gasto => {
+        const category = gasto.categoria;
+        expenseCategories[category] = (expenseCategories[category] || 0) + gasto.valor;
+      });
+    });
+
+    const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1', '#d084d0'];
+    
+    return Object.entries(expenseCategories).map(([name, value], index) => ({
+      name,
+      value,
+      color: colors[index % colors.length]
+    }));
+  };
+
+  const weeklyEarningsData = getWeeklyEarningsData();
+  const expenseData = getExpenseDistributionData();
 
   const StatCard = ({ 
     title, 
@@ -103,6 +157,56 @@ export const Dashboard = () => {
           onChange={(e) => setSelectedDate(e.target.value)}
           className="px-3 py-2 border rounded-md bg-background"
         />
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Weekly Earnings Bar Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Evolução dos Ganhos Semanais</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={weeklyEarningsData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="dia" />
+                <YAxis />
+                <Tooltip formatter={(value: number) => [`R$ ${value.toFixed(2)}`, '']} />
+                <Bar dataKey="uber" fill="hsl(var(--primary))" name="Uber" />
+                <Bar dataKey="99" fill="hsl(var(--secondary))" name="99" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+
+        {/* Expense Distribution Pie Chart */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Distribuição de Gastos</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={expenseData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {expenseData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(value: number) => [`R$ ${value.toFixed(2)}`, 'Valor']} />
+              </PieChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Daily View */}

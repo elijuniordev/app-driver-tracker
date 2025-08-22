@@ -1,16 +1,18 @@
-import { Settings, Plus, BarChart3 } from "lucide-react";
+import { Settings, Plus, BarChart3, History, Car } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface NavigationProps {
-  activeTab: 'dashboard' | 'registro' | 'configuracoes';
-  onTabChange: (tab: 'dashboard' | 'registro' | 'configuracoes') => void;
+  activeTab: 'dashboard' | 'registro' | 'configuracoes' | 'historico' | 'corridas';
+  onTabChange: (tab: 'dashboard' | 'registro' | 'configuracoes' | 'historico' | 'corridas') => void;
 }
 
 export const Navigation = ({ activeTab, onTabChange }: NavigationProps) => {
   const tabs = [
     { id: 'dashboard' as const, label: 'Dashboard', icon: BarChart3 },
+    { id: 'corridas' as const, label: 'Corridas', icon: Car },
     { id: 'registro' as const, label: 'Registrar', icon: Plus },
-    { id: 'configuracoes' as const, label: 'Configurações', icon: Settings },
+    { id: 'historico' as const, label: 'Histórico', icon: History },
+    { id: 'configuracoes' as const, label: 'Config', icon: Settings },
   ];
 
   return (

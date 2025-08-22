@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      corridas_individuais: {
+        Row: {
+          created_at: string | null
+          entrada_diaria_id: number
+          horario: string
+          id: number
+          plataforma: string
+          user_id: string
+          valor: number
+        }
+        Insert: {
+          created_at?: string | null
+          entrada_diaria_id: number
+          horario: string
+          id?: number
+          plataforma: string
+          user_id: string
+          valor?: number
+        }
+        Update: {
+          created_at?: string | null
+          entrada_diaria_id?: number
+          horario?: string
+          id?: number
+          plataforma?: string
+          user_id?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_corridas_entrada_diaria"
+            columns: ["entrada_diaria_id"]
+            isOneToOne: false
+            referencedRelation: "entradas_diarias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       entradas_diarias: {
         Row: {
           consumo_km_l: number
