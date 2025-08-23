@@ -19,7 +19,7 @@ export type Database = {
           consumo_km_l: number
           created_at: string | null
           data_hora: string
-          entrada_diaria_id: number
+          entrada_diaria_id: number | null
           horario: string | null
           id: number
           km_rodados: number
@@ -34,7 +34,7 @@ export type Database = {
           consumo_km_l?: number
           created_at?: string | null
           data_hora?: string
-          entrada_diaria_id: number
+          entrada_diaria_id?: number | null
           horario?: string | null
           id?: number
           km_rodados?: number
@@ -49,7 +49,7 @@ export type Database = {
           consumo_km_l?: number
           created_at?: string | null
           data_hora?: string
-          entrada_diaria_id?: number
+          entrada_diaria_id?: number | null
           horario?: string | null
           id?: number
           km_rodados?: number

@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
 import { Dashboard } from "@/components/Dashboard"; 
+import { EnhancedDashboard } from "@/components/EnhancedDashboard";
 import { DailyRegistry } from "@/components/DailyRegistry";
 import { CarConfig } from "@/components/CarConfig";
 import { Auth } from "@/components/Auth";
@@ -18,7 +19,7 @@ import { Loader2 } from "lucide-react";
 const queryClient = new QueryClient();
 
 const App = () => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'registro' | 'configuracoes' | 'historico' | 'corridas'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'registro' | 'configuracoes' | 'historico' | 'corridas'>('corridas');
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const { carConfig, saveCarConfig, addDailyRecord, fetchDailyRecords } = useDriverData();
@@ -72,7 +73,7 @@ const App = () => {
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
-        return <Dashboard />;
+        return <EnhancedDashboard />;
       case 'corridas':
         return <IndividualRides />;
       case 'registro':
@@ -82,7 +83,7 @@ const App = () => {
       case 'configuracoes':
         return <CarConfig config={carConfig} onSave={saveCarConfig} />;
       default:
-        return <Dashboard />;
+        return <EnhancedDashboard />;
     }
   };
 

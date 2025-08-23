@@ -51,20 +51,7 @@ export const IndividualRides = () => {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) return;
 
-      // First, get the daily entry for the selected date
-      const { data: entrada } = await supabase
-        .from('entradas_diarias')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('data', selectedDate)
-        .single();
-
-      if (!entrada) {
-        setRides([]);
-        return;
-      }
-
-      // Get all rides for the selected date (not tied to daily entries anymore)
+      // Get all rides for the selected date (standalone approach)
       const { data: corridasData, error } = await supabase
         .from('corridas_individuais')
         .select('*')
@@ -104,40 +91,11 @@ export const IndividualRides = () => {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) return;
 
-      // Get or create daily entry
-      let { data: entrada, error: entradaError } = await supabase
-        .from('entradas_diarias')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('data', selectedDate)
-        .single();
-
-      if (entradaError && entradaError.code === 'PGRST116') {
-        // Create new daily entry if it doesn't exist
-        const { data: newEntrada, error: createError } = await supabase
-          .from('entradas_diarias')
-          .insert({
-            data: selectedDate,
-            ganhos_uber: 0,
-            ganhos_99: 0,
-            km_rodados: 0,
-            tempo_trabalhado: 0,
-            consumo_km_l: 0,
-            user_id: user.id
-          })
-          .select('id')
-          .single();
-
-        if (createError) throw createError;
-        entrada = newEntrada;
-      } else if (entradaError) {
-        throw entradaError;
-      }
-
-      // Add the individual ride (no longer tied to daily entries)
+      // Add the individual ride (standalone approach)
       const { error: rideError } = await supabase
         .from('corridas_individuais')
         .insert({
+          entrada_diaria_id: null,
           plataforma: newRide.plataforma,
           valor: newRide.valor,
           data_hora: newRide.data_hora,
@@ -150,9 +108,6 @@ export const IndividualRides = () => {
         });
 
       if (rideError) throw rideError;
-
-      // Update daily totals
-      await updateDailyTotals(entrada.id);
 
       setNewRide({ 
         plataforma: '', 
@@ -185,17 +140,7 @@ export const IndividualRides = () => {
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) return;
 
-      // Get the daily entry ID before deleting the ride
-      const { data: rideData } = await supabase
-        .from('corridas_individuais')
-        .select('entrada_diaria_id')
-        .eq('id', rideId)
-        .eq('user_id', user.id)
-        .single();
-
-      if (!rideData) return;
-
-      // Delete the ride
+      // Delete the ride (standalone approach)
       const { error } = await supabase
         .from('corridas_individuais')
         .delete()
@@ -203,9 +148,6 @@ export const IndividualRides = () => {
         .eq('user_id', user.id);
 
       if (error) throw error;
-
-      // Update daily totals
-      await updateDailyTotals(rideData.entrada_diaria_id);
 
       fetchRides();
       
@@ -223,36 +165,6 @@ export const IndividualRides = () => {
     }
   };
 
-  const updateDailyTotals = async (entradaDiariaId: number) => {
-    try {
-      // Get all rides for this daily entry
-      const { data: allRides } = await supabase
-        .from('corridas_individuais')
-        .select('plataforma, valor')
-        .eq('entrada_diaria_id', entradaDiariaId);
-
-      if (!allRides) return;
-
-      const uberTotal = allRides
-        .filter(ride => ride.plataforma === 'uber')
-        .reduce((sum, ride) => sum + ride.valor, 0);
-
-      const nineNineTotal = allRides
-        .filter(ride => ride.plataforma === '99')
-        .reduce((sum, ride) => sum + ride.valor, 0);
-
-      // Update the daily entry totals
-      await supabase
-        .from('entradas_diarias')
-        .update({
-          ganhos_uber: uberTotal,
-          ganhos_99: nineNineTotal
-        })
-        .eq('id', entradaDiariaId);
-    } catch (error) {
-      console.error('Error updating daily totals:', error);
-    }
-  };
 
   const getDailySummary = (): DailySummary => {
     const uberTotal = rides.filter(r => r.plataforma === 'uber').reduce((sum, r) => sum + r.valor, 0);
@@ -261,7 +173,7 @@ export const IndividualRides = () => {
     return {
       uberTotal,
       nineNineTotal,
-      totalRides: rides.length,
+      totalRides: rides.reduce((sum, r) => sum + r.numero_viagens, 0),
       totalEarnings: uberTotal + nineNineTotal
     };
   };
@@ -326,7 +238,15 @@ export const IndividualRides = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div>
+              <Label>Data e Hora</Label>
+              <Input
+                type="datetime-local"
+                value={newRide.data_hora}
+                onChange={(e) => setNewRide(prev => ({ ...prev, data_hora: e.target.value }))}
+              />
+            </div>
             <div>
               <Label>Plataforma</Label>
               <Select value={newRide.plataforma} onValueChange={(value: 'uber' | '99') => setNewRide(prev => ({ ...prev, plataforma: value }))}>
@@ -340,7 +260,7 @@ export const IndividualRides = () => {
               </Select>
             </div>
             <div>
-              <Label>Valor (R$)</Label>
+              <Label>Ganho Bruto (R$)</Label>
               <Input
                 type="number"
                 step="0.01"
@@ -350,18 +270,69 @@ export const IndividualRides = () => {
                 placeholder="0.00"
               />
             </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
             <div>
-              <Label>Horário</Label>
+              <Label>Número de Viagens</Label>
               <Input
-                type="time"
-                value={newRide.horario}
-                onChange={(e) => setNewRide(prev => ({ ...prev, horario: e.target.value }))}
+                type="number"
+                min="1"
+                value={newRide.numero_viagens || ''}
+                onChange={(e) => setNewRide(prev => ({ ...prev, numero_viagens: parseInt(e.target.value) || 1 }))}
+                placeholder="1"
+              />
+            </div>
+            <div>
+              <Label>Km Rodados</Label>
+              <Input
+                type="number"
+                step="0.1"
+                min="0"
+                value={newRide.km_rodados || ''}
+                onChange={(e) => setNewRide(prev => ({ ...prev, km_rodados: parseFloat(e.target.value) || 0 }))}
+                placeholder="0.0"
+              />
+            </div>
+            <div>
+              <Label>Consumo (km/l)</Label>
+              <Input
+                type="number"
+                step="0.1"
+                min="0"
+                value={newRide.consumo_km_l || ''}
+                onChange={(e) => setNewRide(prev => ({ ...prev, consumo_km_l: parseFloat(e.target.value) || 0 }))}
+                placeholder="0.0"
+              />
+            </div>
+            <div>
+              <Label>Preço Combustível (R$/l)</Label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={newRide.preco_combustivel || ''}
+                onChange={(e) => setNewRide(prev => ({ ...prev, preco_combustivel: parseFloat(e.target.value) || 0 }))}
+                placeholder="0.00"
+              />
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Tempo Trabalhado (minutos)</Label>
+              <Input
+                type="number"
+                min="0"
+                value={newRide.tempo_trabalhado || ''}
+                onChange={(e) => setNewRide(prev => ({ ...prev, tempo_trabalhado: parseInt(e.target.value) || 0 }))}
+                placeholder="0"
               />
             </div>
             <div className="flex items-end">
               <Button onClick={addRide} className="w-full">
                 <Plus className="h-4 w-4 mr-2" />
-                Adicionar
+                Adicionar Corrida
               </Button>
             </div>
           </div>
@@ -384,31 +355,42 @@ export const IndividualRides = () => {
           ) : (
             <div className="space-y-3">
               {rides.map((ride) => (
-                <div key={ride.id} className="flex items-center justify-between p-3 bg-muted rounded-md">
-                  <div className="flex items-center gap-4">
-                    <div className={`px-2 py-1 rounded text-xs font-medium ${
-                      ride.plataforma === 'uber' 
-                        ? 'bg-primary text-primary-foreground' 
-                        : 'bg-secondary text-secondary-foreground'
-                    }`}>
-                      {ride.plataforma === 'uber' ? 'Uber' : '99'}
+                <div key={ride.id} className="p-4 bg-muted rounded-lg border">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-3">
+                      <div className={`px-2 py-1 rounded text-xs font-medium ${
+                        ride.plataforma === 'uber' 
+                          ? 'bg-primary text-primary-foreground' 
+                          : 'bg-secondary text-secondary-foreground'
+                      }`}>
+                        {ride.plataforma === 'uber' ? 'Uber' : '99'}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <span className="font-medium">
+                          {new Date(ride.data_hora).toLocaleString('pt-BR')}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-success" />
+                        <span className="font-medium">R$ {ride.valor.toFixed(2)}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{ride.horario}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-success" />
-                      <span className="font-medium">R$ {ride.valor.toFixed(2)}</span>
-                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => deleteRide(ride.id)}
+                    >
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => deleteRide(ride.id)}
-                  >
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm text-muted-foreground">
+                    <div><span className="font-medium">Viagens:</span> {ride.numero_viagens}</div>
+                    <div><span className="font-medium">KM:</span> {ride.km_rodados}</div>
+                    <div><span className="font-medium">Consumo:</span> {ride.consumo_km_l} km/l</div>
+                    <div><span className="font-medium">Tempo:</span> {ride.tempo_trabalhado}min</div>
+                  </div>
                 </div>
               ))}
             </div>
