@@ -16,29 +16,47 @@ export type Database = {
     Tables: {
       corridas_individuais: {
         Row: {
+          consumo_km_l: number
           created_at: string | null
+          data_hora: string
           entrada_diaria_id: number
-          horario: string
+          horario: string | null
           id: number
+          km_rodados: number
+          numero_viagens: number
           plataforma: string
+          preco_combustivel: number
+          tempo_trabalhado: number
           user_id: string
           valor: number
         }
         Insert: {
+          consumo_km_l?: number
           created_at?: string | null
+          data_hora?: string
           entrada_diaria_id: number
-          horario: string
+          horario?: string | null
           id?: number
+          km_rodados?: number
+          numero_viagens?: number
           plataforma: string
+          preco_combustivel?: number
+          tempo_trabalhado?: number
           user_id: string
           valor?: number
         }
         Update: {
+          consumo_km_l?: number
           created_at?: string | null
+          data_hora?: string
           entrada_diaria_id?: number
-          horario?: string
+          horario?: string | null
           id?: number
+          km_rodados?: number
+          numero_viagens?: number
           plataforma?: string
+          preco_combustivel?: number
+          tempo_trabalhado?: number
           user_id?: string
           valor?: number
         }

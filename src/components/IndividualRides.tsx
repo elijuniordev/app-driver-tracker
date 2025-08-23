@@ -12,7 +12,13 @@ interface IndividualRide {
   id: number;
   plataforma: 'uber' | '99';
   valor: number;
-  horario: string;
+  horario?: string;
+  data_hora: string;
+  numero_viagens: number;
+  km_rodados: number;
+  consumo_km_l: number;
+  preco_combustivel: number;
+  tempo_trabalhado: number;
 }
 
 interface DailySummary {
@@ -28,7 +34,12 @@ export const IndividualRides = () => {
   const [newRide, setNewRide] = useState({
     plataforma: '' as 'uber' | '99' | '',
     valor: 0,
-    horario: ''
+    data_hora: new Date().toISOString().slice(0, 16),
+    numero_viagens: 1,
+    km_rodados: 0,
+    consumo_km_l: 0,
+    preco_combustivel: 0,
+    tempo_trabalhado: 0
   });
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
@@ -53,13 +64,14 @@ export const IndividualRides = () => {
         return;
       }
 
-      // Then get the individual rides for this daily entry
+      // Get all rides for the selected date (not tied to daily entries anymore)
       const { data: corridasData, error } = await supabase
         .from('corridas_individuais')
         .select('*')
         .eq('user_id', user.id)
-        .eq('entrada_diaria_id', entrada.id)
-        .order('horario', { ascending: true });
+        .gte('data_hora', selectedDate + 'T00:00:00')
+        .lt('data_hora', new Date(new Date(selectedDate).getTime() + 24 * 60 * 60 * 1000).toISOString().split('T')[0] + 'T00:00:00')
+        .order('data_hora', { ascending: true });
 
       if (error) throw error;
 
@@ -79,11 +91,11 @@ export const IndividualRides = () => {
   }, [selectedDate]);
 
   const addRide = async () => {
-    if (!newRide.plataforma || !newRide.valor || !newRide.horario) {
+    if (!newRide.plataforma || !newRide.valor || !newRide.data_hora || !newRide.numero_viagens) {
       toast({
         variant: "destructive",
         title: "Erro",
-        description: "Preencha todos os campos."
+        description: "Preencha todos os campos obrigatórios."
       });
       return;
     }
@@ -122,14 +134,18 @@ export const IndividualRides = () => {
         throw entradaError;
       }
 
-      // Add the individual ride
+      // Add the individual ride (no longer tied to daily entries)
       const { error: rideError } = await supabase
         .from('corridas_individuais')
         .insert({
-          entrada_diaria_id: entrada.id,
           plataforma: newRide.plataforma,
           valor: newRide.valor,
-          horario: newRide.horario,
+          data_hora: newRide.data_hora,
+          numero_viagens: newRide.numero_viagens,
+          km_rodados: newRide.km_rodados,
+          consumo_km_l: newRide.consumo_km_l,
+          preco_combustivel: newRide.preco_combustivel,
+          tempo_trabalhado: newRide.tempo_trabalhado,
           user_id: user.id
         });
 
@@ -138,7 +154,16 @@ export const IndividualRides = () => {
       // Update daily totals
       await updateDailyTotals(entrada.id);
 
-      setNewRide({ plataforma: '', valor: 0, horario: '' });
+      setNewRide({ 
+        plataforma: '', 
+        valor: 0, 
+        data_hora: new Date().toISOString().slice(0, 16),
+        numero_viagens: 1,
+        km_rodados: 0,
+        consumo_km_l: 0,
+        preco_combustivel: 0,
+        tempo_trabalhado: 0
+      });
       fetchRides();
       
       toast({
