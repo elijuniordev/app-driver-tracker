@@ -123,8 +123,8 @@ export const DailyRegistry = ({ onSave, carConfig }: DailyRegistryProps) => {
   return (
     <div className="p-4 pb-20 max-w-2xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-foreground mb-2">Registro Diário</h1>
-        <p className="text-muted-foreground">Registre seus ganhos e gastos do dia</p>
+        <h1 className="text-2xl font-bold text-foreground mb-2">Registro do Dia</h1>
+        <p className="text-muted-foreground">Registre todos os dados do seu trabalho ao final do dia</p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">

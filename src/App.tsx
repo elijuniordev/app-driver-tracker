@@ -4,13 +4,11 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
-import { Dashboard } from "@/components/Dashboard"; 
 import { EnhancedDashboard } from "@/components/EnhancedDashboard";
 import { DailyRegistry } from "@/components/DailyRegistry";
 import { CarConfig } from "@/components/CarConfig";
 import { Auth } from "@/components/Auth";
 import { History } from "@/components/History";
-import { IndividualRides } from "@/components/IndividualRides";
 import { useDriverData } from "@/hooks/useDriverData";
 import { supabase } from "@/integrations/supabase/client";
 import { User } from "@supabase/supabase-js";
@@ -19,7 +17,7 @@ import { Loader2 } from "lucide-react";
 const queryClient = new QueryClient();
 
 const App = () => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'registro' | 'configuracoes' | 'historico' | 'corridas'>('corridas');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'registro' | 'configuracoes' | 'historico'>('registro');
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const { carConfig, saveCarConfig, addDailyRecord, fetchDailyRecords } = useDriverData();
@@ -74,8 +72,6 @@ const App = () => {
     switch (activeTab) {
       case 'dashboard':
         return <EnhancedDashboard />;
-      case 'corridas':
-        return <IndividualRides />;
       case 'registro':
         return <DailyRegistry onSave={addDailyRecord} carConfig={carConfig} />;
       case 'historico':
@@ -83,7 +79,7 @@ const App = () => {
       case 'configuracoes':
         return <CarConfig config={carConfig} onSave={saveCarConfig} />;
       default:
-        return <EnhancedDashboard />;
+        return <DailyRegistry onSave={addDailyRecord} carConfig={carConfig} />;
     }
   };
 
