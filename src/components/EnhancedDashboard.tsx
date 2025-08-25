@@ -7,16 +7,21 @@ import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
-interface IndividualRide {
+interface DailyEntry {
   id: number;
-  plataforma: 'uber' | '99';
-  valor: number;
-  data_hora: string;
-  numero_viagens: number;
+  data: string;
+  ganhos_uber: number;
+  ganhos_99: number;
   km_rodados: number;
-  consumo_km_l: number;
-  preco_combustivel: number;
   tempo_trabalhado: number;
+  consumo_km_l: number;
+}
+
+interface Expense {
+  id: number;
+  data: string;
+  categoria: string;
+  valor: number;
 }
 
 interface DailyTotals {
@@ -24,17 +29,18 @@ interface DailyTotals {
   totalEarnings: number;
   uberEarnings: number;
   nineNineEarnings: number;
-  totalTrips: number;
   totalKm: number;
   totalTime: number;
   avgConsumption: number;
-  fuelCost: number;
+  totalExpenses: number;
+  expensesByCategory: Record<string, number>;
 }
 
 export const EnhancedDashboard = () => {
   const [viewMode, setViewMode] = useState<'daily' | 'weekly'>('daily');
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [rides, setRides] = useState<IndividualRide[]>([]);
+  const [dailyEntries, setDailyEntries] = useState<DailyEntry[]>([]);
+  const [expenses, setExpenses] = useState<Expense[]>([]);
   const [loading, setLoading] = useState(false);
 
   // Calculate week start date (Monday)
@@ -45,29 +51,39 @@ export const EnhancedDashboard = () => {
     return new Date(d.setDate(diff)).toISOString().split('T')[0];
   };
 
-  const fetchRides = async (startDate: string, endDate: string) => {
+  const fetchData = async (startDate: string, endDate: string) => {
     try {
       setLoading(true);
       
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) return;
 
-      const { data: corridasData, error } = await supabase
-        .from('corridas_individuais')
+      // Fetch daily entries
+      const { data: entriesData, error: entriesError } = await supabase
+        .from('entradas_diarias')
         .select('*')
         .eq('user_id', user.id)
-        .gte('data_hora', startDate + 'T00:00:00')
-        .lt('data_hora', endDate + 'T23:59:59')
-        .order('data_hora', { ascending: true });
+        .gte('data', startDate)
+        .lte('data', endDate)
+        .order('data', { ascending: true });
 
-      if (error) throw error;
+      if (entriesError) throw entriesError;
 
-      setRides(corridasData?.map(ride => ({
-        ...ride,
-        plataforma: ride.plataforma as 'uber' | '99'
-      })) || []);
+      // Fetch expenses
+      const { data: expensesData, error: expensesError } = await supabase
+        .from('gastos_avulsos')
+        .select('*')
+        .eq('user_id', user.id)
+        .gte('data', startDate)
+        .lte('data', endDate)
+        .order('data', { ascending: true });
+
+      if (expensesError) throw expensesError;
+
+      setDailyEntries(entriesData || []);
+      setExpenses(expensesData || []);
     } catch (error) {
-      console.error('Error fetching rides:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
@@ -75,35 +91,41 @@ export const EnhancedDashboard = () => {
 
   useEffect(() => {
     if (viewMode === 'daily') {
-      fetchRides(selectedDate, selectedDate);
+      fetchData(selectedDate, selectedDate);
     } else {
       const weekStart = getWeekStart(selectedDate);
       const weekEnd = new Date(weekStart);
       weekEnd.setDate(new Date(weekStart).getDate() + 6);
-      fetchRides(weekStart, weekEnd.toISOString().split('T')[0]);
+      fetchData(weekStart, weekEnd.toISOString().split('T')[0]);
     }
   }, [selectedDate, viewMode]);
 
   const calculateDailyTotals = (): DailyTotals => {
-    const totalEarnings = rides.reduce((sum, ride) => sum + ride.valor, 0);
-    const uberEarnings = rides.filter(r => r.plataforma === 'uber').reduce((sum, r) => sum + r.valor, 0);
-    const nineNineEarnings = rides.filter(r => r.plataforma === '99').reduce((sum, r) => sum + r.valor, 0);
-    const totalTrips = rides.reduce((sum, ride) => sum + ride.numero_viagens, 0);
-    const totalKm = rides.reduce((sum, ride) => sum + ride.km_rodados, 0);
-    const totalTime = rides.reduce((sum, ride) => sum + ride.tempo_trabalhado, 0);
-    const totalFuelUsed = rides.reduce((sum, ride) => ride.km_rodados / (ride.consumo_km_l || 1), 0);
-    const fuelCost = rides.reduce((sum, ride) => (ride.km_rodados / (ride.consumo_km_l || 1)) * ride.preco_combustivel, 0);
+    const uberEarnings = dailyEntries.reduce((sum, entry) => sum + entry.ganhos_uber, 0);
+    const nineNineEarnings = dailyEntries.reduce((sum, entry) => sum + entry.ganhos_99, 0);
+    const totalEarnings = uberEarnings + nineNineEarnings;
+    const totalKm = dailyEntries.reduce((sum, entry) => sum + entry.km_rodados, 0);
+    const totalTime = dailyEntries.reduce((sum, entry) => sum + entry.tempo_trabalhado, 0);
+    const avgConsumption = dailyEntries.length > 0 
+      ? dailyEntries.reduce((sum, entry) => sum + entry.consumo_km_l, 0) / dailyEntries.length 
+      : 0;
+    
+    const totalExpenses = expenses.reduce((sum, expense) => sum + expense.valor, 0);
+    const expensesByCategory = expenses.reduce((acc, expense) => {
+      acc[expense.categoria] = (acc[expense.categoria] || 0) + expense.valor;
+      return acc;
+    }, {} as Record<string, number>);
     
     return {
       date: selectedDate,
       totalEarnings,
       uberEarnings,
       nineNineEarnings,
-      totalTrips,
       totalKm,
       totalTime,
-      avgConsumption: totalKm / (totalFuelUsed || 1),
-      fuelCost
+      avgConsumption,
+      totalExpenses,
+      expensesByCategory
     };
   };
 
@@ -117,12 +139,10 @@ export const EnhancedDashboard = () => {
       currentDate.setDate(weekStart.getDate() + i);
       const dateString = currentDate.toISOString().split('T')[0];
       
-      const dayRides = rides.filter(ride => 
-        new Date(ride.data_hora).toISOString().split('T')[0] === dateString
-      );
+      const dayEntry = dailyEntries.find(entry => entry.data === dateString);
       
-      const uberTotal = dayRides.filter(r => r.plataforma === 'uber').reduce((sum, r) => sum + r.valor, 0);
-      const nineNineTotal = dayRides.filter(r => r.plataforma === '99').reduce((sum, r) => sum + r.valor, 0);
+      const uberTotal = dayEntry?.ganhos_uber || 0;
+      const nineNineTotal = dayEntry?.ganhos_99 || 0;
       
       weekData.push({
         dia: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'][currentDate.getDay()],
@@ -134,21 +154,15 @@ export const EnhancedDashboard = () => {
     return weekData;
   };
 
-  // Prepare expense distribution chart data (based on fuel costs)
+  // Prepare expense distribution chart data
   const getExpenseDistributionData = () => {
-    const fuelCost = rides.reduce((sum, ride) => {
-      const fuelUsed = ride.km_rodados / (ride.consumo_km_l || 1);
-      return sum + (fuelUsed * ride.preco_combustivel);
-    }, 0);
-
-    const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c'];
+    const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1', '#d084d0'];
     
-    return [
-      { name: 'Combustível', value: fuelCost, color: colors[0] },
-      { name: 'Manutenção', value: fuelCost * 0.3, color: colors[1] }, // Estimated
-      { name: 'Pedágios', value: fuelCost * 0.15, color: colors[2] }, // Estimated
-      { name: 'Outros', value: fuelCost * 0.1, color: colors[3] }, // Estimated
-    ].filter(item => item.value > 0);
+    return Object.entries(dailyTotals.expensesByCategory).map(([category, value], index) => ({
+      name: category,
+      value,
+      color: colors[index % colors.length]
+    })).filter(item => item.value > 0);
   };
 
   const dailyTotals = calculateDailyTotals();
@@ -213,9 +227,9 @@ export const EnhancedDashboard = () => {
     );
   };
 
-  const netProfit = dailyTotals.totalEarnings - dailyTotals.fuelCost;
+  const netProfit = dailyTotals.totalEarnings - dailyTotals.totalExpenses;
   const earningsPerHour = dailyTotals.totalTime > 0 ? (dailyTotals.totalEarnings / (dailyTotals.totalTime / 60)) : 0;
-  const costPerKm = dailyTotals.totalKm > 0 ? (dailyTotals.fuelCost / dailyTotals.totalKm) : 0;
+  const costPerKm = dailyTotals.totalKm > 0 ? (dailyTotals.totalExpenses / dailyTotals.totalKm) : 0;
 
   return (
     <div className="p-4 pb-20 max-w-7xl mx-auto space-y-6">
@@ -284,11 +298,11 @@ export const EnhancedDashboard = () => {
         />
         
         <StatCard
-          title="Total de Corridas"
-          value={dailyTotals.totalTrips.toString()}
-          subtitle={`${rides.length} registros`}
+          title="Total de Gastos"
+          value={`R$ ${dailyTotals.totalExpenses.toFixed(2)}`}
+          subtitle={`${expenses.length} registros`}
           icon={Car}
-          variant="default"
+          variant="warning"
         />
       </div>
 
@@ -376,7 +390,7 @@ export const EnhancedDashboard = () => {
                 <div className="text-right">
                   <p className="font-bold text-primary">R$ {dailyTotals.uberEarnings.toFixed(2)}</p>
                   <p className="text-sm text-muted-foreground">
-                    {rides.filter(r => r.plataforma === 'uber').reduce((sum, r) => sum + r.numero_viagens, 0)} corridas
+                    {dailyEntries.filter(e => e.ganhos_uber > 0).length} dias registrados
                   </p>
                 </div>
               </div>
@@ -385,7 +399,7 @@ export const EnhancedDashboard = () => {
                 <div className="text-right">
                   <p className="font-bold text-secondary">R$ {dailyTotals.nineNineEarnings.toFixed(2)}</p>
                   <p className="text-sm text-muted-foreground">
-                    {rides.filter(r => r.plataforma === '99').reduce((sum, r) => sum + r.numero_viagens, 0)} corridas
+                    {dailyEntries.filter(e => e.ganhos_99 > 0).length} dias registrados
                   </p>
                 </div>
               </div>
@@ -404,8 +418,8 @@ export const EnhancedDashboard = () => {
                 <span className="font-bold">{dailyTotals.avgConsumption.toFixed(1)} km/l</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="font-medium">Gasto Combustível</span>
-                <span className="font-bold text-destructive">R$ {dailyTotals.fuelCost.toFixed(2)}</span>
+                <span className="font-medium">Total de Gastos</span>
+                <span className="font-bold text-destructive">R$ {dailyTotals.totalExpenses.toFixed(2)}</span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="font-medium">Tempo Total</span>
