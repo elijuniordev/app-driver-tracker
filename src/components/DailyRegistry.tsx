@@ -26,12 +26,14 @@ export const DailyRegistry = ({ onSave, carConfig }: DailyRegistryProps) => {
   const [formData, setFormData] = useState({
     date: new Date().toISOString().split('T')[0],
     tempoTrabalhado: { horas: 0, minutos: 0 },
-    numCorridas: 0,
-    kmRodados: 0,
+    // Dados Uber
+    numeroCorridasUber: 0,
+    kmRodadosUber: 0,
     ganhosUber: 0,
+    // Dados 99
+    numeroCorridas99: 0,
+    kmRodados99: 0,
     ganhos99: 0,
-    consumoKmL: 0,
-    precoCombustivel: 0,
   });
 
   const [gastos, setGastos] = useState<Expense[]>([]);
@@ -39,16 +41,17 @@ export const DailyRegistry = ({ onSave, carConfig }: DailyRegistryProps) => {
   const [combustivelCalculado, setCombustivelCalculado] = useState<number>(0);
   const { toast } = useToast();
 
-  // Calcular combustível automaticamente quando KM, consumo ou preço mudar
+  // Calcular combustível automaticamente quando KM e configurações do carro mudam
   useEffect(() => {
-    if (formData.kmRodados > 0 && formData.consumoKmL > 0 && formData.precoCombustivel > 0) {
-      const litrosConsumidos = formData.kmRodados / formData.consumoKmL;
-      const valorCombustivel = litrosConsumidos * formData.precoCombustivel;
+    const totalKm = formData.kmRodadosUber + formData.kmRodados99;
+    if (totalKm > 0 && carConfig.consumoKmL > 0 && carConfig.precoCombustivel > 0) {
+      const litrosConsumidos = totalKm / carConfig.consumoKmL;
+      const valorCombustivel = litrosConsumidos * carConfig.precoCombustivel;
       setCombustivelCalculado(valorCombustivel);
     } else {
       setCombustivelCalculado(0);
     }
-  }, [formData.kmRodados, formData.consumoKmL, formData.precoCombustivel]);
+  }, [formData.kmRodadosUber, formData.kmRodados99, carConfig.consumoKmL, carConfig.precoCombustivel]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -72,11 +75,12 @@ export const DailyRegistry = ({ onSave, carConfig }: DailyRegistryProps) => {
     const record: Omit<DailyRecord, 'id'> = {
       date: formData.date,
       tempoTrabalhado: tempoTotalMinutos,
-      numCorridas: formData.numCorridas,
-      kmRodados: formData.kmRodados,
+      numeroCorridasUber: formData.numeroCorridasUber,
+      kmRodadosUber: formData.kmRodadosUber,
+      numeroCorridas99: formData.numeroCorridas99,
+      kmRodados99: formData.kmRodados99,
       ganhosUber: formData.ganhosUber,
       ganhos99: formData.ganhos99,
-      consumoKmL: formData.consumoKmL,
       gastos: gastosComCombustivel,
     };
 
@@ -86,12 +90,12 @@ export const DailyRegistry = ({ onSave, carConfig }: DailyRegistryProps) => {
     setFormData({
       date: new Date().toISOString().split('T')[0],
       tempoTrabalhado: { horas: 0, minutos: 0 },
-      numCorridas: 0,
-      kmRodados: 0,
+      numeroCorridasUber: 0,
+      kmRodadosUber: 0,
       ganhosUber: 0,
+      numeroCorridas99: 0,
+      kmRodados99: 0,
       ganhos99: 0,
-      consumoKmL: 0,
-      precoCombustivel: 0,
     });
     setGastos([]);
     
@@ -119,6 +123,7 @@ export const DailyRegistry = ({ onSave, carConfig }: DailyRegistryProps) => {
 
   const totalGastos = gastos.reduce((sum, gasto) => sum + gasto.valor, 0);
   const totalComCombustivel = totalGastos + (combustivelCalculado > 0 && !gastos.find(g => g.categoria === 'Combustível') ? combustivelCalculado : 0);
+  const totalKm = formData.kmRodadosUber + formData.kmRodados99;
 
   return (
     <div className="p-4 pb-20 max-w-2xl mx-auto">
@@ -180,42 +185,39 @@ export const DailyRegistry = ({ onSave, carConfig }: DailyRegistryProps) => {
           </CardContent>
         </Card>
 
-        {/* Corridas e KM */}
+        {/* Dados Uber */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Route className="h-5 w-5 text-primary" />
-              Corridas e Quilometragem
+              Dados Uber
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="corridas">Número de Corridas</Label>
+                <Label htmlFor="corridas-uber">Número de Corridas</Label>
                 <Input
-                  id="corridas"
+                  id="corridas-uber"
                   type="number"
                   min="0"
-                  value={formData.numCorridas || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, numCorridas: parseInt(e.target.value) || 0 }))}
+                  value={formData.numeroCorridasUber || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, numeroCorridasUber: parseInt(e.target.value) || 0 }))}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="km">KM Rodados</Label>
+                <Label htmlFor="km-uber">KM Rodados</Label>
                 <Input
-                  id="km"
+                  id="km-uber"
                   type="number"
                   min="0"
                   step="0.1"
-                  value={formData.kmRodados || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, kmRodados: parseFloat(e.target.value) || 0 }))}
+                  value={formData.kmRodadosUber || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, kmRodadosUber: parseFloat(e.target.value) || 0 }))}
                 />
               </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="ganhos-uber">Ganhos Uber (R$)</Label>
+                <Label htmlFor="ganhos-uber">Ganhos (R$)</Label>
                 <Input
                   id="ganhos-uber"
                   type="number"
@@ -225,8 +227,43 @@ export const DailyRegistry = ({ onSave, carConfig }: DailyRegistryProps) => {
                   onChange={(e) => setFormData(prev => ({ ...prev, ganhosUber: parseFloat(e.target.value) || 0 }))}
                 />
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Dados 99 */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Route className="h-5 w-5 text-secondary" />
+              Dados 99
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="ganhos-99">Ganhos 99 (R$)</Label>
+                <Label htmlFor="corridas-99">Número de Corridas</Label>
+                <Input
+                  id="corridas-99"
+                  type="number"
+                  min="0"
+                  value={formData.numeroCorridas99 || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, numeroCorridas99: parseInt(e.target.value) || 0 }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="km-99">KM Rodados</Label>
+                <Input
+                  id="km-99"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  value={formData.kmRodados99 || ''}
+                  onChange={(e) => setFormData(prev => ({ ...prev, kmRodados99: parseFloat(e.target.value) || 0 }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ganhos-99">Ganhos (R$)</Label>
                 <Input
                   id="ganhos-99"
                   type="number"
@@ -234,33 +271,6 @@ export const DailyRegistry = ({ onSave, carConfig }: DailyRegistryProps) => {
                   step="0.01"
                   value={formData.ganhos99 || ''}
                   onChange={(e) => setFormData(prev => ({ ...prev, ganhos99: parseFloat(e.target.value) || 0 }))}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="consumo-kml">Consumo do Dia (KM/L)</Label>
-                <Input
-                  id="consumo-kml"
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  placeholder="Ex: 12.5"
-                  value={formData.consumoKmL || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, consumoKmL: parseFloat(e.target.value) || 0 }))}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="preco-combustivel">Preço do Combustível (R$/L)</Label>
-                <Input
-                  id="preco-combustivel"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  placeholder="Ex: 5.50"
-                  value={formData.precoCombustivel || ''}
-                  onChange={(e) => setFormData(prev => ({ ...prev, precoCombustivel: parseFloat(e.target.value) || 0 }))}
                 />
               </div>
             </div>
@@ -284,10 +294,10 @@ export const DailyRegistry = ({ onSave, carConfig }: DailyRegistryProps) => {
                   <span className="font-medium text-success">Combustível Calculado Automaticamente</span>
                 </div>
                 <div className="text-sm text-muted-foreground mb-2">
-                  {formData.kmRodados > 0 && formData.consumoKmL > 0 && (
+                  {totalKm > 0 && carConfig.consumoKmL > 0 && (
                     <>
-                      {formData.kmRodados} km ÷ {formData.consumoKmL} km/L = {(formData.kmRodados / formData.consumoKmL).toFixed(2)} litros<br />
-                      {(formData.kmRodados / formData.consumoKmL).toFixed(2)} litros × R$ {formData.precoCombustivel.toFixed(2)}/L
+                      {totalKm} km ÷ {carConfig.consumoKmL} km/L = {(totalKm / carConfig.consumoKmL).toFixed(2)} litros<br />
+                      {(totalKm / carConfig.consumoKmL).toFixed(2)} litros × R$ {carConfig.precoCombustivel.toFixed(2)}/L
                     </>
                   )}
                 </div>

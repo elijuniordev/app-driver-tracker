@@ -7,17 +7,20 @@ export interface CarConfig {
   aluguelSemanal: number;
   limiteKmSemanal: number;
   valorKmExcedido: number;
+  consumoKmL: number;
+  precoCombustivel: number;
 }
 
 export interface DailyRecord {
   id: number;
   date: string;
   tempoTrabalhado: number; // em minutos
-  numCorridas: number;
-  kmRodados: number;
+  numeroCorridasUber: number;
+  kmRodadosUber: number;
+  numeroCorridas99: number;
+  kmRodados99: number;
   ganhosUber: number;
   ganhos99: number;
-  consumoKmL: number;
   gastos: Expense[];
 }
 
@@ -28,13 +31,13 @@ export interface Expense {
   entrada_diaria_id?: number;
 }
 
-const STORAGE_KEY = 'driver-tracker-car-config';
-
 const defaultCarConfig: CarConfig = {
   modelo: '',
   aluguelSemanal: 0,
   limiteKmSemanal: 0,
   valorKmExcedido: 0,
+  consumoKmL: 10,
+  precoCombustivel: 5.50,
 };
 
 export const useDriverData = () => {
@@ -43,15 +46,49 @@ export const useDriverData = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  // Load car config from localStorage and daily records from Supabase on mount
+  // Load car config and daily records from Supabase on mount
   useEffect(() => {
-    const savedCarConfig = localStorage.getItem(STORAGE_KEY);
-    if (savedCarConfig) {
-      setCarConfig(JSON.parse(savedCarConfig));
-    }
-    
+    fetchCarConfig();
     fetchDailyRecords();
   }, []);
+
+  const fetchCarConfig = async () => {
+    try {
+      // Get user session
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        console.log('User not authenticated');
+        return;
+      }
+
+      // Fetch car config
+      const { data: configs, error: configError } = await supabase
+        .from('car_configs')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      if (configError) {
+        console.error('Error fetching car config:', configError);
+        return;
+      }
+
+      if (configs && configs.length > 0) {
+        const config = configs[0];
+        setCarConfig({
+          modelo: config.modelo,
+          aluguelSemanal: config.aluguel_semanal,
+          limiteKmSemanal: config.limite_km_semanal,
+          valorKmExcedido: config.valor_km_excedido,
+          consumoKmL: config.consumo_km_l,
+          precoCombustivel: config.preco_combustivel
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching car config:', error);
+    }
+  };
 
   const fetchDailyRecords = async () => {
     try {
@@ -92,11 +129,12 @@ export const useDriverData = () => {
         id: entrada.id,
         date: entrada.data,
         tempoTrabalhado: entrada.tempo_trabalhado,
-        numCorridas: 0, // Will be calculated or added later
-        kmRodados: entrada.km_rodados,
+        numeroCorridasUber: entrada.numero_corridas_uber,
+        kmRodadosUber: entrada.km_rodados_uber,
+        numeroCorridas99: entrada.numero_corridas_99,
+        kmRodados99: entrada.km_rodados_99,
         ganhosUber: entrada.ganhos_uber,
         ganhos99: entrada.ganhos_99,
-        consumoKmL: entrada.consumo_km_l,
         gastos: gastos?.filter(gasto => gasto.entrada_diaria_id === entrada.id).map(gasto => ({
           id: gasto.id,
           valor: gasto.valor,
@@ -114,9 +152,97 @@ export const useDriverData = () => {
   };
 
   // Helper functions
-  const saveCarConfig = (config: CarConfig) => {
-    setCarConfig(config);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+  const saveCarConfig = async (config: CarConfig) => {
+    try {
+      setLoading(true);
+      
+      // Get user session
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        toast({
+          variant: "destructive",
+          title: "Erro",
+          description: "Usuário não autenticado"
+        });
+        return;
+      }
+
+      // Check if config already exists
+      const { data: existingConfigs, error: fetchError } = await supabase
+        .from('car_configs')
+        .select('id')
+        .eq('user_id', user.id)
+        .limit(1);
+
+      if (fetchError) {
+        console.error('Error checking existing config:', fetchError);
+        return;
+      }
+
+      if (existingConfigs && existingConfigs.length > 0) {
+        // Update existing config
+        const { error: updateError } = await supabase
+          .from('car_configs')
+          .update({
+            modelo: config.modelo,
+            aluguel_semanal: config.aluguelSemanal,
+            limite_km_semanal: config.limiteKmSemanal,
+            valor_km_excedido: config.valorKmExcedido,
+            consumo_km_l: config.consumoKmL,
+            preco_combustivel: config.precoCombustivel
+          })
+          .eq('user_id', user.id);
+
+        if (updateError) {
+          console.error('Error updating car config:', updateError);
+          toast({
+            variant: "destructive",
+            title: "Erro",
+            description: "Erro ao atualizar configuração do veículo"
+          });
+          return;
+        }
+      } else {
+        // Create new config
+        const { error: insertError } = await supabase
+          .from('car_configs')
+          .insert({
+            modelo: config.modelo,
+            aluguel_semanal: config.aluguelSemanal,
+            limite_km_semanal: config.limiteKmSemanal,
+            valor_km_excedido: config.valorKmExcedido,
+            consumo_km_l: config.consumoKmL,
+            preco_combustivel: config.precoCombustivel,
+            user_id: user.id
+          });
+
+        if (insertError) {
+          console.error('Error inserting car config:', insertError);
+          toast({
+            variant: "destructive",
+            title: "Erro",
+            description: "Erro ao salvar configuração do veículo"
+          });
+          return;
+        }
+      }
+
+      setCarConfig(config);
+      
+      toast({
+        title: "Sucesso",
+        description: "Configuração do veículo salva com sucesso!"
+      });
+    } catch (error) {
+      console.error('Error saving car config:', error);
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Erro ao salvar configuração"
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const addDailyRecord = async (record: Omit<DailyRecord, 'id'>) => {
@@ -141,9 +267,12 @@ export const useDriverData = () => {
           data: record.date,
           ganhos_uber: record.ganhosUber,
           ganhos_99: record.ganhos99,
-          km_rodados: record.kmRodados,
+          numero_corridas_uber: record.numeroCorridasUber,
+          km_rodados_uber: record.kmRodadosUber,
+          numero_corridas_99: record.numeroCorridas99,
+          km_rodados_99: record.kmRodados99,
+          km_rodados: record.kmRodadosUber + record.kmRodados99,
           tempo_trabalhado: record.tempoTrabalhado,
-          consumo_km_l: record.consumoKmL,
           user_id: user.id
         })
         .select()
@@ -216,9 +345,21 @@ export const useDriverData = () => {
       const updateData: any = {};
       if (record.ganhosUber !== undefined) updateData.ganhos_uber = record.ganhosUber;
       if (record.ganhos99 !== undefined) updateData.ganhos_99 = record.ganhos99;
-      if (record.kmRodados !== undefined) updateData.km_rodados = record.kmRodados;
+      if (record.numeroCorridasUber !== undefined) updateData.numero_corridas_uber = record.numeroCorridasUber;
+      if (record.kmRodadosUber !== undefined) updateData.km_rodados_uber = record.kmRodadosUber;
+      if (record.numeroCorridas99 !== undefined) updateData.numero_corridas_99 = record.numeroCorridas99;
+      if (record.kmRodados99 !== undefined) updateData.km_rodados_99 = record.kmRodados99;
       if (record.tempoTrabalhado !== undefined) updateData.tempo_trabalhado = record.tempoTrabalhado;
-      if (record.consumoKmL !== undefined) updateData.consumo_km_l = record.consumoKmL;
+      
+      // Update total km
+      if (record.kmRodadosUber !== undefined || record.kmRodados99 !== undefined) {
+        const currentRecord = dailyRecords.find(r => r.id === id);
+        if (currentRecord) {
+          const newKmUber = record.kmRodadosUber !== undefined ? record.kmRodadosUber : currentRecord.kmRodadosUber;
+          const newKm99 = record.kmRodados99 !== undefined ? record.kmRodados99 : currentRecord.kmRodados99;
+          updateData.km_rodados = newKmUber + newKm99;
+        }
+      }
 
       if (Object.keys(updateData).length > 0) {
         const { error } = await supabase
@@ -318,6 +459,8 @@ export const useDriverData = () => {
     const lucroLiquido = ganhosBrutos - totalGastos;
     const ganhoPorHora = record.tempoTrabalhado > 0 ? lucroLiquido / (record.tempoTrabalhado / 60) : 0;
     const ganhoPorMinuto = record.tempoTrabalhado > 0 ? lucroLiquido / record.tempoTrabalhado : 0;
+    const totalCorridas = record.numeroCorridasUber + record.numeroCorridas99;
+    const totalKm = record.kmRodadosUber + record.kmRodados99;
 
     return {
       ganhosBrutos,
@@ -328,8 +471,12 @@ export const useDriverData = () => {
       ganhoPorHora,
       ganhoPorMinuto,
       tempoTrabalhado: record.tempoTrabalhado,
-      numCorridas: record.numCorridas,
-      kmRodados: record.kmRodados,
+      numCorridas: totalCorridas,
+      kmRodados: totalKm,
+      numeroCorridasUber: record.numeroCorridasUber,
+      kmRodadosUber: record.kmRodadosUber,
+      numeroCorridas99: record.numeroCorridas99,
+      kmRodados99: record.kmRodados99,
     };
   };
 
@@ -356,7 +503,7 @@ export const useDriverData = () => {
       sum + record.gastos.reduce((gastoSum, gasto) => gastoSum + gasto.valor, 0), 0
     );
     
-    const kmTotais = weekRecords.reduce((sum, record) => sum + record.kmRodados, 0);
+    const kmTotais = weekRecords.reduce((sum, record) => sum + record.kmRodadosUber + record.kmRodados99, 0);
     const kmExcedidos = Math.max(0, kmTotais - carConfig.limiteKmSemanal);
     const custoKmExcedido = kmExcedidos * carConfig.valorKmExcedido;
     
@@ -401,5 +548,6 @@ export const useDriverData = () => {
     getDailyAnalysis,
     getWeeklyAnalysis,
     fetchDailyRecords,
+    fetchCarConfig,
   };
 };

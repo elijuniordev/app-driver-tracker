@@ -86,16 +86,44 @@ export const CarConfig = ({ config, onSave }: CarConfigProps) => {
               </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="valor-km">Valor por KM Excedido (R$)</Label>
+                <Input
+                  id="valor-km"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="0.00"
+                  value={formData.valorKmExcedido || ''}
+                  onChange={(e) => handleChange('valorKmExcedido', e.target.value)}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="consumo-kml">Consumo do Carro (KM/L)</Label>
+                <Input
+                  id="consumo-kml"
+                  type="number"
+                  min="0"
+                  step="0.1"
+                  placeholder="Ex: 12.5"
+                  value={formData.consumoKmL || ''}
+                  onChange={(e) => handleChange('consumoKmL', e.target.value)}
+                />
+              </div>
+            </div>
+
             <div className="space-y-2">
-              <Label htmlFor="valor-km">Valor por KM Excedido (R$)</Label>
+              <Label htmlFor="preco-combustivel">Preço do Combustível (R$/L)</Label>
               <Input
-                id="valor-km"
+                id="preco-combustivel"
                 type="number"
                 min="0"
                 step="0.01"
-                placeholder="0.00"
-                value={formData.valorKmExcedido || ''}
-                onChange={(e) => handleChange('valorKmExcedido', e.target.value)}
+                placeholder="Ex: 5.50"
+                value={formData.precoCombustivel || ''}
+                onChange={(e) => handleChange('precoCombustivel', e.target.value)}
               />
             </div>
 

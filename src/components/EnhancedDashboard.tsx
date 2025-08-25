@@ -13,8 +13,14 @@ interface DailyEntry {
   ganhos_uber: number;
   ganhos_99: number;
   km_rodados: number;
+  km_rodados_uber: number;
+  km_rodados_99: number;
+  numero_corridas_uber: number;
+  numero_corridas_99: number;
   tempo_trabalhado: number;
-  consumo_km_l: number;
+  user_id: string;
+  created_at: string;
+  updated_at: string;
 }
 
 interface Expense {

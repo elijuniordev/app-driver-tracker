@@ -25,9 +25,9 @@ export const History = () => {
     setEditForm({
       ganhosUber: record.ganhosUber,
       ganhos99: record.ganhos99,
-      kmRodados: record.kmRodados,
+      kmRodados: record.kmRodadosUber + record.kmRodados99,
       tempoTrabalhado: record.tempoTrabalhado,
-      consumoKmL: record.consumoKmL
+      consumoKmL: 10 // Valor padrão
     });
   };
 
@@ -238,7 +238,7 @@ export const History = () => {
                       </div>
                       <div>
                         <span className="text-muted-foreground">KM: </span>
-                        <span className="font-medium">{record.kmRodados.toFixed(1)} km</span>
+                        <span className="font-medium">{(record.kmRodadosUber + record.kmRodados99).toFixed(1)} km</span>
                       </div>
                     </div>
 

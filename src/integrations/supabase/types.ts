@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      car_configs: {
+        Row: {
+          aluguel_semanal: number
+          consumo_km_l: number
+          created_at: string
+          id: string
+          limite_km_semanal: number
+          modelo: string
+          preco_combustivel: number
+          updated_at: string
+          user_id: string
+          valor_km_excedido: number
+        }
+        Insert: {
+          aluguel_semanal?: number
+          consumo_km_l?: number
+          created_at?: string
+          id?: string
+          limite_km_semanal?: number
+          modelo: string
+          preco_combustivel?: number
+          updated_at?: string
+          user_id: string
+          valor_km_excedido?: number
+        }
+        Update: {
+          aluguel_semanal?: number
+          consumo_km_l?: number
+          created_at?: string
+          id?: string
+          limite_km_semanal?: number
+          modelo?: string
+          preco_combustivel?: number
+          updated_at?: string
+          user_id?: string
+          valor_km_excedido?: number
+        }
+        Relationships: []
+      }
       corridas_individuais: {
         Row: {
           consumo_km_l: number
@@ -72,37 +111,46 @@ export type Database = {
       }
       entradas_diarias: {
         Row: {
-          consumo_km_l: number
           created_at: string | null
           data: string
           ganhos_99: number
           ganhos_uber: number
           id: number
           km_rodados: number
+          km_rodados_99: number
+          km_rodados_uber: number
+          numero_corridas_99: number
+          numero_corridas_uber: number
           tempo_trabalhado: number
           updated_at: string | null
           user_id: string
         }
         Insert: {
-          consumo_km_l?: number
           created_at?: string | null
           data: string
           ganhos_99?: number
           ganhos_uber?: number
           id?: number
           km_rodados?: number
+          km_rodados_99?: number
+          km_rodados_uber?: number
+          numero_corridas_99?: number
+          numero_corridas_uber?: number
           tempo_trabalhado?: number
           updated_at?: string | null
           user_id: string
         }
         Update: {
-          consumo_km_l?: number
           created_at?: string | null
           data?: string
           ganhos_99?: number
           ganhos_uber?: number
           id?: number
           km_rodados?: number
+          km_rodados_99?: number
+          km_rodados_uber?: number
+          numero_corridas_99?: number
+          numero_corridas_uber?: number
           tempo_trabalhado?: number
           updated_at?: string | null
           user_id?: string
