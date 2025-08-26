@@ -9,7 +9,7 @@ import { StatCard } from "./dashboard/StatCard";
 import { DailyTotals, getDailyAnalysis, getWeeklyAnalysis, getWeekStart } from "./dashboard/dashboard-helpers";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { format, startOfWeek, endOfWeek } from "date-fns";
+import { format, startOfWeek, endOfWeek, eachDayOfInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 export const EnhancedDashboard = () => {
@@ -113,6 +113,13 @@ export const EnhancedDashboard = () => {
   const currentWeekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
   const currentWeekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 });
   
+  const allDaysInWeek = eachDayOfInterval({
+    start: currentWeekStart,
+    end: currentWeekEnd,
+  });
+
+  const selectedWeekDays = allDaysInWeek.filter(day => format(day, "yyyy-MM-dd") !== currentDayString);
+
   const formatWeekForDisplay = () => {
     const start = format(currentWeekStart, "dd/MM");
     const end = format(currentWeekEnd, "dd/MM");
@@ -170,14 +177,10 @@ export const EnhancedDashboard = () => {
                 initialFocus
                 locale={ptBR}
                 modifiers={{
-                  selectedWeek: {
-                    from: startOfWeek(selectedDate, { weekStartsOn: 1 }),
-                    to: endOfWeek(selectedDate, { weekStartsOn: 1 }),
-                  },
+                  selectedWeekDays: selectedWeekDays,
                 }}
                 modifiersClassNames={{
-                  selectedWeek: "bg-primary-light text-primary-foreground",
-                  today: "text-foreground"
+                  selectedWeekDays: "bg-primary-light text-primary-foreground",
                 }}
                 classNames={{
                   day_selected: "bg-primary text-primary-foreground",

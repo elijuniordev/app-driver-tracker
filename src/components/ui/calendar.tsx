@@ -1,4 +1,3 @@
-// src/components/ui/calendar.tsx
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { DayPicker } from "react-day-picker";
@@ -35,16 +34,16 @@ function Calendar({
         head_cell:
           "text-muted-foreground rounded-md w-9 font-normal text-[0.8rem]",
         row: "flex w-full mt-2",
-        // ALTERADO: Remoção de classes conflitantes. A cor da semana será aplicada pelo `modifiersClassNames`.
         cell: "h-9 w-9 text-center text-sm p-0 relative focus-within:relative focus-within:z-20",
         day: cn(
           buttonVariants({ variant: "ghost" }),
           "h-9 w-9 p-0 font-normal focus-visible:outline-none focus-visible:ring-0 ring-0",
+          // ADICIONADO: Seletor para aplicar a cor da semana selecionada.
+          "data-[rdp-selected=true]:bg-primary-light"
         ),
         day_range_end: "day-range-end",
-        // REMOVIDO: A classe 'day_today' foi alterada para não usar a cor de acento (azul)
         day_today: "text-foreground",
-        // ADICIONADO: 'day_selected' agora aplica a cor mais escura diretamente
+        // ALTERADO: Priorizamos a cor mais escura apenas para o dia exato selecionado.
         day_selected: "bg-primary text-primary-foreground hover:bg-primary/90",
         day_outside:
           "day-outside text-muted-foreground opacity-50",
