@@ -25,17 +25,17 @@ const expenseCategories = [
 
 export const DailyRegistry = ({ onSave, carConfig }: DailyRegistryProps) => {
   const [formData, setFormData] = useState({
-  date: getLocalISODate(),
-  tempoTrabalhado: { horas: 0, minutos: 0 },
-  // Dados Uber
-  numeroCorridasUber: 0,
-  kmRodadosUber: 0,
-  ganhosUber: 0,
-  // Dados 99
-  numeroCorridas99: 0,
-  kmRodados99: 0,
-  ganhos99: 0,
-});
+    date: getLocalISODate(),
+    tempoTrabalhado: { horas: 0, minutos: 0 },
+    // Dados Uber
+    numeroCorridasUber: 0,
+    kmRodadosUber: 0,
+    ganhosUber: 0,
+    // Dados 99
+    numeroCorridas99: 0,
+    kmRodados99: 0,
+    ganhos99: 0,
+  });
 
   const [gastos, setGastos] = useState<Expense[]>([]);
   const [novoGasto, setNovoGasto] = useState({ valor: 0, categoria: '' });
@@ -55,54 +55,54 @@ export const DailyRegistry = ({ onSave, carConfig }: DailyRegistryProps) => {
   }, [formData.kmRodadosUber, formData.kmRodados99, carConfig.consumoKmL, carConfig.precoCombustivel]);
 
   const handleSubmit = (e: React.FormEvent) => {
-  e.preventDefault();
-  
-  const tempoTotalMinutos = formData.tempoTrabalhado.horas * 60 + formData.tempoTrabalhado.minutos;
-  
-  const gastosComCombustivel = [...gastos];
-  const combustivelManual = gastos.find(g => g.categoria === 'Combustível');
-  
-  // Adicionar o gasto de combustível calculado somente se não houver um gasto manual
-  if (combustivelCalculado > 0 && !combustivelManual) {
-    gastosComCombustivel.push({
-      id: Date.now(),
-      valor: combustivelCalculado,
-      categoria: 'Combustível (Auto)',
-    });
-  }
-  
-  const record: Omit<DailyRecord, 'id'> = {
-    date: formData.date,
-    tempoTrabalhado: tempoTotalMinutos,
-    numeroCorridasUber: formData.numeroCorridasUber,
-    kmRodadosUber: formData.kmRodadosUber,
-    numeroCorridas99: formData.numeroCorridas99,
-    kmRodados99: formData.kmRodados99,
-    ganhosUber: formData.ganhosUber,
-    ganhos99: formData.ganhos99,
-    gastos: gastosComCombustivel,
-  };
+    e.preventDefault();
+    
+    const tempoTotalMinutos = formData.tempoTrabalhado.horas * 60 + formData.tempoTrabalhado.minutos;
+    
+    const gastosComCombustivel = [...gastos];
+    const combustivelManual = gastos.find(g => g.categoria === 'Combustível');
+    
+    // Adicionar o gasto de combustível calculado somente se não houver um gasto manual
+    if (combustivelCalculado > 0 && !combustivelManual) {
+      gastosComCombustivel.push({
+        id: Date.now(),
+        valor: combustivelCalculado,
+        categoria: 'Combustível (Auto)',
+      });
+    }
+    
+    const record: Omit<DailyRecord, 'id'> = {
+      date: formData.date,
+      tempoTrabalhado: tempoTotalMinutos,
+      numeroCorridasUber: formData.numeroCorridasUber,
+      kmRodadosUber: formData.kmRodadosUber,
+      numeroCorridas99: formData.numeroCorridas99,
+      kmRodados99: formData.kmRodados99,
+      ganhosUber: formData.ganhosUber,
+      ganhos99: formData.ganhos99,
+      gastos: gastosComCombustivel,
+    };
 
-  onSave(record);
-  
-  // Reset form
-  setFormData({
-    date: getLocalISODate(),
-    tempoTrabalhado: { horas: 0, minutos: 0 },
-    numeroCorridasUber: 0,
-    kmRodadosUber: 0,
-    ganhosUber: 0,
-    numeroCorridas99: 0,
-    kmRodados99: 0,
-    ganhos99: 0,
-  });
-  setGastos([]);
-  
-  toast({
-    title: "Registro salvo!",
-    description: "Seus dados do dia foram salvos com sucesso.",
-  });
-};
+    onSave(record);
+    
+    // Reset form
+    setFormData({
+      date: getLocalISODate(),
+      tempoTrabalhado: { horas: 0, minutos: 0 },
+      numeroCorridasUber: 0,
+      kmRodadosUber: 0,
+      ganhosUber: 0,
+      numeroCorridas99: 0,
+      kmRodados99: 0,
+      ganhos99: 0,
+    });
+    setGastos([]);
+    
+    toast({
+      title: "Registro salvo!",
+      description: "Seus dados do dia foram salvos com sucesso.",
+    });
+  };
 
   const adicionarGasto = () => {
     if (novoGasto.valor > 0 && novoGasto.categoria) {

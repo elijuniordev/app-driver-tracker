@@ -1,5 +1,5 @@
-// src/components/dashboard/dashboard-helpers.ts
 import { DailyRecord, CarConfig } from "@/hooks/useDriverData";
+import { startOfWeek, addDays, getDay } from 'date-fns';
 
 export interface DailyTotals {
   date: string;
@@ -14,10 +14,8 @@ export interface DailyTotals {
 }
 
 export const getWeekStart = (date: string): string => {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
-  return new Date(d.setDate(diff)).toISOString().split('T')[0];
+  const d = new Date(`${date}T00:00:00`);
+  return startOfWeek(d, { weekStartsOn: 1 }).toISOString().split('T')[0];
 };
 
 export const getDailyAnalysis = (date: string, records: DailyRecord[], carConfig: CarConfig) => {
@@ -52,12 +50,11 @@ export const getDailyAnalysis = (date: string, records: DailyRecord[], carConfig
   };
 
 export const getWeeklyAnalysis = (startDate: string, records: DailyRecord[], carConfig: CarConfig) => {
-  const start = new Date(getWeekStart(startDate));
-  const end = new Date(start);
-  end.setDate(start.getDate() + 6);
+  const start = new Date(`${getWeekStart(startDate)}T00:00:00`);
+  const end = addDays(start, 6);
 
   const weekRecords = records.filter(record => {
-    const recordDate = new Date(record.date);
+    const recordDate = new Date(`${record.date}T00:00:00`);
     return recordDate >= start && recordDate <= end;
   });
 

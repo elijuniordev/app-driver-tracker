@@ -7,6 +7,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useDriverData, DailyRecord } from "@/hooks/useDriverData";
 import { useToast } from "@/hooks/use-toast";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 export const History = () => {
   const { dailyRecords, updateDailyRecord, deleteDailyRecord } = useDriverData();
@@ -16,7 +18,7 @@ export const History = () => {
     ganhos99: 0,
     kmRodados: 0,
     tempoTrabalhado: 0,
-    consumoKmL: 0
+    consumoKmL: 10 // Valor padrão
   });
   const { toast } = useToast();
 
@@ -57,7 +59,8 @@ export const History = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('pt-BR');
+    // Usar uma data fictícia e depois extrair a parte da data para evitar fuso horário
+    return format(new Date(`${dateString}T00:00:00`), 'dd/MM/yyyy', { locale: ptBR });
   };
 
   const sortedRecords = dailyRecords.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());

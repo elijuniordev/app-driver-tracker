@@ -72,7 +72,7 @@ export const EnhancedDashboard = () => {
     const weekStartString = getWeekStart(currentDayString);
     const weekData = [];
 
-    const weekStartDate = new Date(weekStartString);
+    const weekStartDate = new Date(`${weekStartString}T00:00:00`);
 
     for (let i = 0; i < 7; i++) {
       const currentDate = new Date(weekStartDate);
@@ -117,8 +117,8 @@ export const EnhancedDashboard = () => {
   const selectedWeekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 });
 
   const formatWeekForDisplay = () => {
-    const start = format(selectedWeekStart, "dd/MM");
-    const end = format(selectedWeekEnd, "dd/MM");
+    const start = format(selectedWeekStart, "dd/MM", { locale: ptBR });
+    const end = format(selectedWeekEnd, "dd/MM", { locale: ptBR });
     return `${start} - ${end}`;
   };
 

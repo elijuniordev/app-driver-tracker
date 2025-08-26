@@ -247,11 +247,11 @@ export const useDriverData = () => {
         });
         return;
       }
-
+      
       const { data: entrada, error: entradaError } = await supabase
         .from('entradas_diarias')
         .insert({
-          data: record.date,
+          data: record.date, // Envia a string 'YYYY-MM-DD' diretamente
           ganhos_uber: record.ganhosUber,
           ganhos_99: record.ganhos99,
           numero_corridas_uber: record.numeroCorridasUber,
@@ -277,7 +277,7 @@ export const useDriverData = () => {
 
       if (record.gastos.length > 0) {
         const gastosToInsert = record.gastos.map(gasto => ({
-          data: record.date,
+          data: record.date, // Envia a string 'YYYY-MM-DD' diretamente
           valor: gasto.valor,
           categoria: gasto.categoria,
           entrada_diaria_id: entrada.id,
