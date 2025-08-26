@@ -175,33 +175,41 @@ export const EnhancedDashboard = () => {
                   initialFocus
                   locale={ptBR}
                   weekStartsOn={1}
-                  modifiers={{ today }}
+                  modifiers={{
+                    today,
+                  }}
                   modifiersClassNames={{
-                    today: "bg-info text-info-foreground",
-                    selected: "bg-primary text-primary-foreground",
+                    today: "bg-blue-500 text-white rounded-full", // hoje azul
+                    selected: "bg-green-600 text-white rounded-full", // dia selecionado verde escuro
                   }}
                 />
               ) : (
                 <Calendar
-                  mode="range"
-                  selected={{ from: selectedWeekStart, to: selectedWeekEnd }}
-                  onSelect={(range: DateRange | undefined) => {
-                    if (range?.from) {
-                      setSelectedDate(range.from);
-                      setIsPopoverOpen(false);
-                    }
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(day) => {
+                    if (!day) return;
+                    setSelectedDate(day);
+                    setIsPopoverOpen(false);
                   }}
                   initialFocus
                   locale={ptBR}
                   weekStartsOn={1}
-                  modifiers={{ today }}
+                  modifiers={{
+                    today,
+                    selectedWeek: { from: selectedWeekStart, to: selectedWeekEnd }, // pinta a semana
+                    selectedDay: selectedDate, // pinta o dia clicado
+                  }}
                   modifiersClassNames={{
-                    today: "bg-info text-info-foreground",
-                    selected: "bg-primary text-primary-foreground",
+                    today: "bg-blue-500 text-white rounded-full", // hoje azul
+                    selectedWeek: "bg-green-200 text-green-900", // semana verde claro
+                    selectedDay: "bg-green-600 text-white rounded-full", // dia verde escuro
                   }}
                 />
+
               )}
             </PopoverContent>
+
           </Popover>
         </div>
       </div>
