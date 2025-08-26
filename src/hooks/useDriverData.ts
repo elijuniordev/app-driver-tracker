@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Database } from '@/integrations/supabase/types';
 
 export interface CarConfig {
   modelo: string;
@@ -46,22 +47,14 @@ export const useDriverData = () => {
   const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
-  // Load car config and daily records from Supabase on mount
-  useEffect(() => {
-    fetchCarConfig();
-    fetchDailyRecords();
-  }, []);
-
-  const fetchCarConfig = async () => {
+  const fetchCarConfig = useCallback(async () => {
     try {
-      // Get user session
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) {
         console.log('User not authenticated');
         return;
       }
 
-      // Fetch car config
       const { data: configs, error: configError } = await supabase
         .from('car_configs')
         .select('*')
@@ -88,20 +81,18 @@ export const useDriverData = () => {
     } catch (error) {
       console.error('Error fetching car config:', error);
     }
-  };
+  }, []);
 
-  const fetchDailyRecords = async () => {
+  const fetchDailyRecords = useCallback(async () => {
     try {
       setLoading(true);
       
-      // Get user session
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) {
         console.log('User not authenticated');
         return;
       }
 
-      // Fetch daily entries
       const { data: entradas, error: entradasError } = await supabase
         .from('entradas_diarias')
         .select('*')
@@ -113,7 +104,6 @@ export const useDriverData = () => {
         return;
       }
 
-      // Fetch expenses for all entries
       const { data: gastos, error: gastosError } = await supabase
         .from('gastos_avulsos')
         .select('*')
@@ -124,7 +114,6 @@ export const useDriverData = () => {
         return;
       }
 
-      // Transform data to match interface
       const records: DailyRecord[] = entradas?.map(entrada => ({
         id: entrada.id,
         date: entrada.data,
@@ -149,14 +138,17 @@ export const useDriverData = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  // Helper functions
+  useEffect(() => {
+    fetchCarConfig();
+    fetchDailyRecords();
+  }, [fetchCarConfig, fetchDailyRecords]);
+
   const saveCarConfig = async (config: CarConfig) => {
     try {
       setLoading(true);
       
-      // Get user session
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) {
         toast({
@@ -167,7 +159,6 @@ export const useDriverData = () => {
         return;
       }
 
-      // Check if config already exists
       const { data: existingConfigs, error: fetchError } = await supabase
         .from('car_configs')
         .select('id')
@@ -180,7 +171,6 @@ export const useDriverData = () => {
       }
 
       if (existingConfigs && existingConfigs.length > 0) {
-        // Update existing config
         const { error: updateError } = await supabase
           .from('car_configs')
           .update({
@@ -203,7 +193,6 @@ export const useDriverData = () => {
           return;
         }
       } else {
-        // Create new config
         const { error: insertError } = await supabase
           .from('car_configs')
           .insert({
@@ -249,7 +238,6 @@ export const useDriverData = () => {
     try {
       setLoading(true);
       
-      // Get user session
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) {
         toast({
@@ -260,7 +248,6 @@ export const useDriverData = () => {
         return;
       }
 
-      // Insert daily entry
       const { data: entrada, error: entradaError } = await supabase
         .from('entradas_diarias')
         .insert({
@@ -288,7 +275,6 @@ export const useDriverData = () => {
         return;
       }
 
-      // Insert expenses
       if (record.gastos.length > 0) {
         const gastosToInsert = record.gastos.map(gasto => ({
           data: record.date,
@@ -307,7 +293,6 @@ export const useDriverData = () => {
         }
       }
 
-      // Refresh data
       await fetchDailyRecords();
       
       toast({
@@ -330,7 +315,6 @@ export const useDriverData = () => {
     try {
       setLoading(true);
       
-      // Get user session
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) {
         toast({
@@ -341,8 +325,9 @@ export const useDriverData = () => {
         return;
       }
 
-      // Update daily entry
-      const updateData: any = {};
+      type DailyEntryUpdate = Database['public']['Tables']['entradas_diarias']['Update'];
+
+      const updateData: DailyEntryUpdate = {};
       if (record.ganhosUber !== undefined) updateData.ganhos_uber = record.ganhosUber;
       if (record.ganhos99 !== undefined) updateData.ganhos_99 = record.ganhos99;
       if (record.numeroCorridasUber !== undefined) updateData.numero_corridas_uber = record.numeroCorridasUber;
@@ -351,7 +336,6 @@ export const useDriverData = () => {
       if (record.kmRodados99 !== undefined) updateData.km_rodados_99 = record.kmRodados99;
       if (record.tempoTrabalhado !== undefined) updateData.tempo_trabalhado = record.tempoTrabalhado;
       
-      // Update total km
       if (record.kmRodadosUber !== undefined || record.kmRodados99 !== undefined) {
         const currentRecord = dailyRecords.find(r => r.id === id);
         if (currentRecord) {
@@ -379,7 +363,6 @@ export const useDriverData = () => {
         }
       }
 
-      // Refresh data
       await fetchDailyRecords();
       
       toast({
@@ -402,7 +385,6 @@ export const useDriverData = () => {
     try {
       setLoading(true);
       
-      // Get user session
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) {
         toast({
@@ -413,7 +395,6 @@ export const useDriverData = () => {
         return;
       }
 
-      // Delete daily entry (expenses will be deleted automatically due to CASCADE)
       const { error } = await supabase
         .from('entradas_diarias')
         .delete()
@@ -430,7 +411,6 @@ export const useDriverData = () => {
         return;
       }
 
-      // Refresh data
       await fetchDailyRecords();
       
       toast({
@@ -449,8 +429,7 @@ export const useDriverData = () => {
     }
   };
 
-  // Analysis functions
-  const getDailyAnalysis = (date: string) => {
+  const getDailyAnalysis = useCallback((date: string) => {
     const record = dailyRecords.find(r => r.date === date);
     if (!record) return null;
 
@@ -463,6 +442,7 @@ export const useDriverData = () => {
     const totalKm = record.kmRodadosUber + record.kmRodados99;
 
     return {
+      date: record.date,
       ganhosBrutos,
       ganhosUber: record.ganhosUber,
       ganhos99: record.ganhos99,
@@ -478,17 +458,16 @@ export const useDriverData = () => {
       numeroCorridas99: record.numeroCorridas99,
       kmRodados99: record.kmRodados99,
     };
-  };
+  }, [dailyRecords]);
 
-  const getWeeklyAnalysis = (startDate: string) => {
-    // Garantir que startDate seja uma segunda-feira
+  const getWeeklyAnalysis = useCallback((startDate: string) => {
     const start = new Date(startDate);
-    const dayOfWeek = start.getDay(); // 0 = domingo, 1 = segunda
+    const dayOfWeek = start.getDay();
     const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
     start.setDate(start.getDate() + mondayOffset);
     
     const end = new Date(start);
-    end.setDate(start.getDate() + 6); // domingo
+    end.setDate(start.getDate() + 6);
 
     const weekRecords = dailyRecords.filter(record => {
       const recordDate = new Date(record.date);
@@ -510,7 +489,6 @@ export const useDriverData = () => {
     const gastosTotal = gastosRegistrados + carConfig.aluguelSemanal + custoKmExcedido;
     const lucroLiquido = ganhosBrutos - gastosTotal;
 
-    // Análise comparativa por plataforma
     const tempoTotalTrabalhado = weekRecords.reduce((sum, record) => sum + record.tempoTrabalhado, 0);
     const ganhoPorHoraUber = tempoTotalTrabalhado > 0 ? (ganhosUber / (tempoTotalTrabalhado / 60)) : 0;
     const ganhoPorHora99 = tempoTotalTrabalhado > 0 ? (ganhos99 / (tempoTotalTrabalhado / 60)) : 0;
@@ -535,7 +513,7 @@ export const useDriverData = () => {
         fim: end.toISOString().split('T')[0],
       },
     };
-  };
+  }, [dailyRecords, carConfig]);
 
   return {
     carConfig,

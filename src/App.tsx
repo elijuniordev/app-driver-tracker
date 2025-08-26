@@ -4,7 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Navigation } from "@/components/Navigation";
-import { EnhancedDashboard } from "@/components/EnhancedDashboard";
+import { EnhancedDashboard } from "@/components/Dashboard";
 import { DailyRegistry } from "@/components/DailyRegistry";
 import { CarConfig } from "@/components/CarConfig";
 import { Auth } from "@/components/Auth";
