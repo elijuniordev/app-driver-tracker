@@ -169,21 +169,20 @@ export const EnhancedDashboard = () => {
                 }}
                 initialFocus
                 locale={ptBR}
-                weekStartsOn={1}
                 modifiers={{
                   selectedWeek: {
                     from: startOfWeek(selectedDate, { weekStartsOn: 1 }),
                     to: endOfWeek(selectedDate, { weekStartsOn: 1 }),
                   },
-                  today: new Date(),
                 }}
-                // REMOVIDO: O estilo 'today' foi removido para ser definido no CSS global
-                modifiersStyles={{
-                  selectedWeek: {
-                    backgroundColor: 'hsl(var(--primary))',
-                    color: 'hsl(var(--primary-foreground))'
-                  }
+                modifiersClassNames={{
+                  selectedWeek: "bg-primary-light text-primary-foreground",
+                  today: "text-foreground"
                 }}
+                classNames={{
+                  day_selected: "bg-primary text-primary-foreground",
+                }}
+                weekStartsOn={1}
               />
             </PopoverContent>
           </Popover>
