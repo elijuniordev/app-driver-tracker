@@ -135,7 +135,7 @@ export const useDriverData = () => {
           id: gasto.id,
           valor: gasto.valor,
           categoria: gasto.categoria,
-          entrada_diaria_id: gasto.entrada_diaria_id
+          entrada_diaria_id: gasto.entrada_diaria_id ?? undefined
         })) || []
       })) || [];
 
@@ -338,20 +338,21 @@ export const useDriverData = () => {
 
       type DailyEntryUpdate = Database['public']['Tables']['entradas_diarias']['Update'];
 
-      const updateData: DailyEntryUpdate = {};
-      if (record.ganhosUber !== undefined) updateData.ganhos_uber = record.ganhosUber;
-      if (record.ganhos99 !== undefined) updateData.ganhos_99 = record.ganhos99;
-      if (record.numeroCorridasUber !== undefined) updateData.numero_corridas_uber = record.numeroCorridasUber;
-      if (record.kmRodadosUber !== undefined) updateData.km_rodados_uber = record.kmRodadosUber;
-      if (record.numeroCorridas99 !== undefined) updateData.numero_corridas_99 = record.numeroCorridas99;
-      if (record.kmRodados99 !== undefined) updateData.km_rodados_99 = record.kmRodados99;
-      if (record.tempoTrabalhado !== undefined) updateData.tempo_trabalhado = record.tempoTrabalhado;
+      const updateData: DailyEntryUpdate = {
+        ...(record.ganhosUber !== undefined && { ganhos_uber: record.ganhosUber }),
+        ...(record.ganhos99 !== undefined && { ganhos_99: record.ganhos99 }),
+        ...(record.numeroCorridasUber !== undefined && { numero_corridas_uber: record.numeroCorridasUber }),
+        ...(record.kmRodadosUber !== undefined && { km_rodados_uber: record.kmRodadosUber }),
+        ...(record.numeroCorridas99 !== undefined && { numero_corridas_99: record.numeroCorridas99 }),
+        ...(record.kmRodados99 !== undefined && { km_rodados_99: record.kmRodados99 }),
+        ...(record.tempoTrabalhado !== undefined && { tempo_trabalhado: record.tempoTrabalhado }),
+      };
 
       if (record.kmRodadosUber !== undefined || record.kmRodados99 !== undefined) {
         const currentRecord = dailyRecords.find(r => r.id === id);
         if (currentRecord) {
-          const newKmUber = record.kmRodadosUber !== undefined ? record.kmRodadosUber : currentRecord.kmRodadosUber;
-          const newKm99 = record.kmRodados99 !== undefined ? record.kmRodados99 : currentRecord.kmRodados99;
+          const newKmUber = record.kmRodadosUber ?? currentRecord.kmRodadosUber;
+          const newKm99 = record.kmRodados99 ?? currentRecord.kmRodados99;
           updateData.km_rodados = newKmUber + newKm99;
         }
       }

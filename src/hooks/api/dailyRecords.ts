@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
-import { DailyRecord, Expense, Database } from "../types";
+import { DailyRecord, Expense } from "../types";
+import { Database } from "@/integrations/supabase/types";
 import { useToast } from "../use-toast";
 
 export const fetchDailyRecords = async (supabase: ReturnType<typeof createClient>): Promise<DailyRecord[]> => {
@@ -32,20 +33,20 @@ export const fetchDailyRecords = async (supabase: ReturnType<typeof createClient
         }
 
         const records: DailyRecord[] = entradas?.map(entrada => ({
-            id: entrada.id,
-            date: entrada.data,
-            tempoTrabalhado: entrada.tempo_trabalhado,
-            numeroCorridasUber: entrada.numero_corridas_uber,
-            kmRodadosUber: entrada.km_rodados_uber,
-            numeroCorridas99: entrada.numero_corridas_99,
-            kmRodados99: entrada.km_rodados_99,
-            ganhosUber: entrada.ganhos_uber,
-            ganhos99: entrada.ganhos_99,
+            id: entrada.id as number,
+            date: entrada.data as string,
+            tempoTrabalhado: entrada.tempo_trabalhado as number,
+            numeroCorridasUber: entrada.numero_corridas_uber as number,
+            kmRodadosUber: entrada.km_rodados_uber as number,
+            numeroCorridas99: entrada.numero_corridas_99 as number,
+            kmRodados99: entrada.km_rodados_99 as number,
+            ganhosUber: entrada.ganhos_uber as number,
+            ganhos99: entrada.ganhos_99 as number,
             gastos: gastos?.filter(gasto => gasto.entrada_diaria_id === entrada.id).map(gasto => ({
-                id: gasto.id,
-                valor: gasto.valor,
-                categoria: gasto.categoria,
-                entrada_diaria_id: gasto.entrada_diaria_id
+                id: gasto.id as number,
+                valor: gasto.valor as number,
+                categoria: gasto.categoria as string,
+                entrada_diaria_id: gasto.entrada_diaria_id as number | undefined
             })) || []
         })) || [];
 

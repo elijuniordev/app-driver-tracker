@@ -1,5 +1,6 @@
 import { Settings, Plus, BarChart3, History } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 interface NavigationProps {
   activeTab: 'dashboard' | 'registro' | 'configuracoes' | 'historico';
@@ -20,10 +21,13 @@ export const Navigation = ({ activeTab, onTabChange }: NavigationProps) => {
         {tabs.map(({ id, label, icon: Icon }) => (
           <Button
             key={id}
-            variant={activeTab === id ? "default" : "ghost"}
+            variant="ghost"
             size="sm"
             onClick={() => onTabChange(id)}
-            className="flex flex-col items-center gap-1 h-auto py-2 px-3"
+            className={cn(
+              "flex flex-col items-center gap-1 h-auto py-2 px-3 transition-colors duration-200",
+              activeTab === id ? "text-primary" : "text-muted-foreground"
+            )}
           >
             <Icon className="h-5 w-5" />
             <span className="text-xs">{label}</span>

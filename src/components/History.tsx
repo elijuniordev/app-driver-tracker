@@ -2,41 +2,23 @@ import { useState } from "react";
 import { Edit, Trash2, Calendar, DollarSign, Route, Clock } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useDriverData, DailyRecord } from "@/hooks/useDriverData";
 import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { EditRecordForm } from "./EditRecordForm";
 
 export const History = () => {
   const { dailyRecords, updateDailyRecord, deleteDailyRecord } = useDriverData();
   const [editingRecord, setEditingRecord] = useState<DailyRecord | null>(null);
-  const [editForm, setEditForm] = useState({
-    ganhosUber: 0,
-    ganhos99: 0,
-    kmRodados: 0,
-    tempoTrabalhado: 0,
-    consumoKmL: 10 // Valor padrão
-  });
   const { toast } = useToast();
 
-  const handleEdit = (record: DailyRecord) => {
-    setEditingRecord(record);
-    setEditForm({
-      ganhosUber: record.ganhosUber,
-      ganhos99: record.ganhos99,
-      kmRodados: record.kmRodadosUber + record.kmRodados99,
-      tempoTrabalhado: record.tempoTrabalhado,
-      consumoKmL: 10 // Valor padrão
-    });
-  };
-
-  const handleSaveEdit = async () => {
+  const handleSaveEdit = async (data: Partial<DailyRecord>) => {
     if (!editingRecord) return;
     
-    await updateDailyRecord(editingRecord.id, editForm);
+    await updateDailyRecord(editingRecord.id, data);
     setEditingRecord(null);
     toast({
       title: "Registro atualizado",
@@ -59,7 +41,6 @@ export const History = () => {
   };
 
   const formatDate = (dateString: string) => {
-    // Usar uma data fictícia e depois extrair a parte da data para evitar fuso horário
     return format(new Date(`${dateString}T00:00:00`), 'dd/MM/yyyy', { locale: ptBR });
   };
 
@@ -100,7 +81,7 @@ export const History = () => {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleEdit(record)}
+                            onClick={() => setEditingRecord(record)}
                           >
                             <Edit className="h-4 w-4" />
                           </Button>
@@ -109,64 +90,7 @@ export const History = () => {
                           <DialogHeader>
                             <DialogTitle>Editar Registro - {formatDate(record.date)}</DialogTitle>
                           </DialogHeader>
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <label className="text-sm font-medium">Ganhos Uber (R$)</label>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  value={editForm.ganhosUber}
-                                  onChange={(e) => setEditForm(prev => ({ ...prev, ganhosUber: parseFloat(e.target.value) || 0 }))}
-                                />
-                              </div>
-                              <div>
-                                <label className="text-sm font-medium">Ganhos 99 (R$)</label>
-                                <Input
-                                  type="number"
-                                  step="0.01"
-                                  value={editForm.ganhos99}
-                                  onChange={(e) => setEditForm(prev => ({ ...prev, ganhos99: parseFloat(e.target.value) || 0 }))}
-                                />
-                              </div>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                              <div>
-                                <label className="text-sm font-medium">KM Rodados</label>
-                                <Input
-                                  type="number"
-                                  step="0.1"
-                                  value={editForm.kmRodados}
-                                  onChange={(e) => setEditForm(prev => ({ ...prev, kmRodados: parseFloat(e.target.value) || 0 }))}
-                                />
-                              </div>
-                              <div>
-                                <label className="text-sm font-medium">Tempo Trabalhado (min)</label>
-                                <Input
-                                  type="number"
-                                  value={editForm.tempoTrabalhado}
-                                  onChange={(e) => setEditForm(prev => ({ ...prev, tempoTrabalhado: parseInt(e.target.value) || 0 }))}
-                                />
-                              </div>
-                            </div>
-                            <div>
-                              <label className="text-sm font-medium">Consumo KM/L</label>
-                              <Input
-                                type="number"
-                                step="0.1"
-                                value={editForm.consumoKmL}
-                                onChange={(e) => setEditForm(prev => ({ ...prev, consumoKmL: parseFloat(e.target.value) || 0 }))}
-                              />
-                            </div>
-                            <div className="flex gap-2">
-                              <Button onClick={handleSaveEdit} className="flex-1">
-                                Salvar Alterações
-                              </Button>
-                              <Button variant="outline" onClick={() => setEditingRecord(null)} className="flex-1">
-                                Cancelar
-                              </Button>
-                            </div>
-                          </div>
+                          {editingRecord && <EditRecordForm record={editingRecord} onSave={handleSaveEdit} onCancel={() => setEditingRecord(null)} />}
                         </DialogContent>
                       </Dialog>
 
@@ -198,24 +122,24 @@ export const History = () => {
                 <CardContent>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-success" />
+                      <DollarSign className="h-4 w-4 text-green-500" />
                       <div>
                         <p className="text-sm text-muted-foreground">Ganhos Brutos</p>
                         <p className="font-medium">R$ {ganhosBrutos.toFixed(2)}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <DollarSign className="h-4 w-4 text-destructive" />
+                      <DollarSign className="h-4 w-4 text-red-500" />
                       <div>
                         <p className="text-sm text-muted-foreground">Gastos</p>
                         <p className="font-medium">R$ {totalGastos.toFixed(2)}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <DollarSign className={`h-4 w-4 ${lucroLiquido >= 0 ? 'text-success' : 'text-destructive'}`} />
+                      <DollarSign className={`h-4 w-4 ${lucroLiquido >= 0 ? 'text-green-500' : 'text-red-500'}`} />
                       <div>
                         <p className="text-sm text-muted-foreground">Lucro Líquido</p>
-                        <p className={`font-medium ${lucroLiquido >= 0 ? 'text-success' : 'text-destructive'}`}>
+                        <p className={`font-medium ${lucroLiquido >= 0 ? 'text-green-500' : 'text-red-500'}`}>
                           R$ {lucroLiquido.toFixed(2)}
                         </p>
                       </div>
