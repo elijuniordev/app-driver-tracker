@@ -177,13 +177,16 @@ export const EnhancedDashboard = () => {
                 initialFocus
                 locale={ptBR}
                 modifiers={{
-                  selectedWeekDays: selectedWeekDays,
+                  selectedWeek: {
+                    from: startOfWeek(selectedDate, { weekStartsOn: 1 }),
+                    to: endOfWeek(selectedDate, { weekStartsOn: 1 }),
+                  },
                 }}
                 modifiersClassNames={{
-                  selectedWeekDays: "bg-primary-light text-primary-foreground",
+                  selectedWeek: "bg-primary text-primary-foreground bg-opacity-80",
                 }}
                 classNames={{
-                  day_selected: "bg-primary text-primary-foreground",
+                  day_selected: "bg-primary text-primary-foreground bg-opacity-100",
                 }}
                 weekStartsOn={1}
               />

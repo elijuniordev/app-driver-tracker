@@ -38,18 +38,13 @@ function Calendar({
         day: cn(
           buttonVariants({ variant: "ghost" }),
           "h-9 w-9 p-0 font-normal focus-visible:outline-none focus-visible:ring-0 ring-0",
-          // ADICIONADO: Seletor para aplicar a cor da semana selecionada.
-          "data-[rdp-selected=true]:bg-primary-light"
         ),
         day_range_end: "day-range-end",
         day_today: "text-foreground",
-        // ALTERADO: Priorizamos a cor mais escura apenas para o dia exato selecionado.
         day_selected: "bg-primary text-primary-foreground hover:bg-primary/90",
-        day_outside:
-          "day-outside text-muted-foreground opacity-50",
+        day_outside: "day-outside text-muted-foreground opacity-50",
         day_disabled: "text-muted-foreground opacity-50",
-        day_range_middle:
-          "aria-selected:bg-primary-light aria-selected:text-primary-foreground",
+        day_range_middle: "aria-selected:bg-primary-light aria-selected:text-primary-foreground",
         day_hidden: "invisible",
         ...classNames,
       }}
