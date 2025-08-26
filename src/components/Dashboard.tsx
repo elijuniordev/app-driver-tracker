@@ -1,16 +1,16 @@
 import { useState, useEffect } from "react";
-import { TrendingUp, TrendingDown, Clock, Route, DollarSign, AlertTriangle, Car, Calendar as CalendarIcon } from "lucide-react";
+import { TrendingUp, Clock, Route, DollarSign, AlertTriangle, Car, Calendar as CalendarIcon } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useDriverData } from "@/hooks/useDriverData";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import { StatCard } from "./dashboard/StatCard";
 import { DailyTotals, getDailyAnalysis, getWeeklyAnalysis, getWeekStart } from "./dashboard/dashboard-helpers";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { format, startOfWeek, endOfWeek, eachDayOfInterval } from "date-fns";
+import { format, startOfWeek, endOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { DateRange } from "react-day-picker";
 
 export const EnhancedDashboard = () => {
   const [viewMode, setViewMode] = useState<'daily' | 'weekly'>('daily');
@@ -26,7 +26,7 @@ export const EnhancedDashboard = () => {
   let weeklyData: ReturnType<typeof getWeeklyAnalysis> | undefined;
 
   const currentDayString = format(selectedDate, "yyyy-MM-dd");
-  
+
   if (viewMode === 'daily') {
     const dailyAnalysis = getDailyAnalysis(currentDayString, dailyRecords, carConfig);
     dailyTotals = dailyAnalysis ? {
@@ -71,13 +71,15 @@ export const EnhancedDashboard = () => {
   const getWeeklyEarningsData = () => {
     const weekStartString = getWeekStart(currentDayString);
     const weekData = [];
-    
+
+    const weekStartDate = new Date(weekStartString);
+
     for (let i = 0; i < 7; i++) {
-      const currentDate = new Date(weekStartString);
-      currentDate.setDate(new Date(weekStartString).getDate() + i);
+      const currentDate = new Date(weekStartDate);
+      currentDate.setDate(weekStartDate.getDate() + i);
       const dateString = format(currentDate, "yyyy-MM-dd");
       const dayData = getDailyAnalysis(dateString, dailyRecords, carConfig);
-      
+
       weekData.push({
         dia: format(currentDate, "E", { locale: ptBR }),
         uber: dayData?.ganhosUber || 0,
@@ -95,14 +97,14 @@ export const EnhancedDashboard = () => {
     }, {} as Record<string, number>) || {};
 
     const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1', '#d084d0'];
-    
+
     return Object.entries(expensesByCategory).map(([name, value], index) => ({
       name,
       value,
       color: colors[index % colors.length]
     })).filter(item => item.value > 0);
   };
-  
+
   const weeklyEarningsData = getWeeklyEarningsData();
   const expenseData = getExpenseDistributionData();
 
@@ -110,19 +112,13 @@ export const EnhancedDashboard = () => {
   const earningsPerHour = dailyTotals.totalTime > 0 ? (dailyTotals.totalEarnings / (dailyTotals.totalTime / 60)) : 0;
   const costPerKm = dailyTotals.totalKm > 0 ? (dailyTotals.totalExpenses / dailyTotals.totalKm) : 0;
 
-  const currentWeekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
-  const currentWeekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 });
-  
-  const allDaysInWeek = eachDayOfInterval({
-    start: currentWeekStart,
-    end: currentWeekEnd,
-  });
-
-  const selectedWeekDays = allDaysInWeek.filter(day => format(day, "yyyy-MM-dd") !== currentDayString);
+  const today = new Date();
+  const selectedWeekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
+  const selectedWeekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 });
 
   const formatWeekForDisplay = () => {
-    const start = format(currentWeekStart, "dd/MM");
-    const end = format(currentWeekEnd, "dd/MM");
+    const start = format(selectedWeekStart, "dd/MM");
+    const end = format(selectedWeekEnd, "dd/MM");
     return `${start} - ${end}`;
   };
 
@@ -135,25 +131,25 @@ export const EnhancedDashboard = () => {
             {viewMode === 'daily' ? 'Resumo do dia' : 'Resumo da semana'}
           </p>
         </div>
-        
+
         <div className="flex flex-col sm:flex-row gap-3">
           <div className="flex gap-2">
-            <Button 
-              variant={viewMode === 'daily' ? 'default' : 'outline'} 
+            <Button
+              variant={viewMode === 'daily' ? 'default' : 'outline'}
               onClick={() => setViewMode('daily')}
               size="sm"
             >
               Diário
             </Button>
-            <Button 
-              variant={viewMode === 'weekly' ? 'default' : 'outline'} 
+            <Button
+              variant={viewMode === 'weekly' ? 'default' : 'outline'}
               onClick={() => setViewMode('weekly')}
               size="sm"
             >
               Semanal
             </Button>
           </div>
-          
+
           <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
             <PopoverTrigger asChild>
               <Button
@@ -161,35 +157,50 @@ export const EnhancedDashboard = () => {
                 className="w-auto justify-start text-left font-normal"
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {viewMode === 'daily' ? format(selectedDate, "PPP", { locale: ptBR }) : formatWeekForDisplay()}
+                {viewMode === 'daily'
+                  ? format(selectedDate, "PPP", { locale: ptBR })
+                  : formatWeekForDisplay()}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">
-              <Calendar
-                mode="single"
-                selected={selectedDate}
-                onSelect={(day) => {
-                  if (day) {
+              {viewMode === "daily" ? (
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(day) => {
+                    if (!day) return;
                     setSelectedDate(day);
                     setIsPopoverOpen(false);
-                  }
-                }}
-                initialFocus
-                locale={ptBR}
-                modifiers={{
-                  selectedWeek: {
-                    from: startOfWeek(selectedDate, { weekStartsOn: 1 }),
-                    to: endOfWeek(selectedDate, { weekStartsOn: 1 }),
-                  },
-                }}
-                modifiersClassNames={{
-                  selectedWeek: "bg-primary text-primary-foreground bg-opacity-80",
-                }}
-                classNames={{
-                  day_selected: "bg-primary text-primary-foreground bg-opacity-100",
-                }}
-                weekStartsOn={1}
-              />
+                  }}
+                  initialFocus
+                  locale={ptBR}
+                  weekStartsOn={1}
+                  modifiers={{ today }}
+                  modifiersClassNames={{
+                    today: "bg-info text-info-foreground",
+                    selected: "bg-primary text-primary-foreground",
+                  }}
+                />
+              ) : (
+                <Calendar
+                  mode="range"
+                  selected={{ from: selectedWeekStart, to: selectedWeekEnd }}
+                  onSelect={(range: DateRange | undefined) => {
+                    if (range?.from) {
+                      setSelectedDate(range.from);
+                      setIsPopoverOpen(false);
+                    }
+                  }}
+                  initialFocus
+                  locale={ptBR}
+                  weekStartsOn={1}
+                  modifiers={{ today }}
+                  modifiersClassNames={{
+                    today: "bg-info text-info-foreground",
+                    selected: "bg-primary text-primary-foreground",
+                  }}
+                />
+              )}
             </PopoverContent>
           </Popover>
         </div>
@@ -208,7 +219,7 @@ export const EnhancedDashboard = () => {
               variant={netProfit > 0 ? 'success' : 'destructive'}
               trend={netProfit > 0 ? 'up' : 'down'}
             />
-            
+
             <StatCard
               title="Ganho por Hora"
               value={`R$ ${earningsPerHour.toFixed(2)}`}
@@ -216,7 +227,7 @@ export const EnhancedDashboard = () => {
               icon={Clock}
               variant="default"
             />
-            
+
             <StatCard
               title="Custo por KM"
               value={`R$ ${costPerKm.toFixed(2)}`}
@@ -224,7 +235,7 @@ export const EnhancedDashboard = () => {
               icon={Route}
               variant="warning"
             />
-            
+
             <StatCard
               title="Total de Gastos"
               value={`R$ ${dailyTotals.totalExpenses.toFixed(2)}`}
@@ -249,7 +260,7 @@ export const EnhancedDashboard = () => {
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="dia" />
                       <YAxis />
-                      <Tooltip 
+                      <Tooltip
                         formatter={(value: number) => [`R$ ${value.toFixed(2)}`, '']}
                         labelFormatter={(label) => `${label}`}
                       />

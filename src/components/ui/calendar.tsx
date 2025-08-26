@@ -1,6 +1,7 @@
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { DayPicker } from "react-day-picker";
+import { isSameDay } from "date-fns";
 
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
@@ -13,6 +14,10 @@ function Calendar({
   showOutsideDays = true,
   ...props
 }: CalendarProps) {
+  const today = new Date();
+  const selectedDate = props.selected as Date | undefined;
+  const isToday = isSameDay(today, selectedDate);
+  
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
@@ -40,7 +45,6 @@ function Calendar({
           "h-9 w-9 p-0 font-normal focus-visible:outline-none focus-visible:ring-0 ring-0",
         ),
         day_range_end: "day-range-end",
-        day_today: "text-foreground",
         day_selected: "bg-primary text-primary-foreground hover:bg-primary/90",
         day_outside: "day-outside text-muted-foreground opacity-50",
         day_disabled: "text-muted-foreground opacity-50",
@@ -52,6 +56,16 @@ function Calendar({
         IconLeft: ({ ..._props }) => <ChevronLeft className="h-4 w-4" />,
         IconRight: ({ ..._props }) => <ChevronRight className="h-4 w-4" />,
       }}
+      modifiers={{
+        today: today,
+        ...props.modifiers,
+      }}
+      modifiersClassNames={{
+        today: "bg-info text-info-foreground",
+        selectedWeek: "bg-primary text-primary-foreground bg-opacity-80",
+        ...props.modifiersClassNames,
+      }}
+      weekStartsOn={1}
       {...props}
     />
   );
