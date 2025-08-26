@@ -1,6 +1,6 @@
 import { TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { DailyRecord, CarConfig } from "@/hooks/useDriverData";
@@ -28,7 +28,6 @@ export const WeeklyEarningsChart = ({ currentDayString, dailyRecords, carConfig 
         dia: format(currentDate, "E", { locale: ptBR }),
         uber: dayData?.ganhosUber || 0,
         '99': dayData?.ganhos99 || 0,
-        total: (dayData?.ganhosUber || 0) + (dayData?.ganhos99 || 0)
       });
     }
     return weekData;
@@ -59,8 +58,9 @@ export const WeeklyEarningsChart = ({ currentDayString, dailyRecords, carConfig 
                 formatter={(value: number) => [`R$ ${value.toFixed(2)}`, '']}
                 labelFormatter={(label) => `${label}`}
               />
-              <Bar dataKey="uber" stackId="a" fill="hsl(var(--primary))" name="Uber" />
-              <Bar dataKey="99" stackId="a" fill="hsl(var(--secondary))" name="99" />
+              <Legend />
+              <Bar dataKey="uber" stackId="a" fill="hsl(var(--primary))" name="Ganhos Uber" />
+              <Bar dataKey="99" stackId="a" fill="hsl(var(--secondary))" name="Ganhos 99" />
             </BarChart>
           </ResponsiveContainer>
         ) : (

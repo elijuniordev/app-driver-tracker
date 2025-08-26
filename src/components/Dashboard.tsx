@@ -1,12 +1,15 @@
 import { useState, useEffect } from "react";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { TrendingUp, Clock, Route, DollarSign, AlertTriangle, Car, Calendar as CalendarIcon } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useDriverData } from "@/hooks/useDriverData";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { StatCard } from "./dashboard/StatCard";
+import { getDailyAnalysis, getWeeklyAnalysis, getWeekStart, WeeklyAnalysis } from "./dashboard/dashboard-helpers";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format, startOfWeek, endOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useDriverData } from "@/hooks/useDriverData";
-import { getDailyAnalysis, getWeeklyAnalysis, WeeklyAnalysis } from "./dashboard/dashboard-helpers";
 import { StatCardsSection } from "./dashboard/StatCardsSection";
 import { WeeklyEarningsChart } from "./dashboard/WeeklyEarningsChart";
 import { ExpenseDistributionChart } from "./dashboard/ExpenseDistributionChart";
@@ -36,6 +39,54 @@ export const EnhancedDashboard = () => {
     expensesByCategory = (analyzedData as WeeklyAnalysis)?.expensesByCategory || {};
   }
   
+  const getWeeklyEarningsData = () => {
+    const weekStartString = getWeekStart(currentDayString);
+    const weekData = [];
+
+    const weekStartDate = new Date(`${weekStartString}T00:00:00`);
+
+    for (let i = 0; i < 7; i++) {
+      const currentDate = new Date(weekStartDate);
+      currentDate.setDate(weekStartDate.getDate() + i);
+      const dateString = format(currentDate, "yyyy-MM-dd");
+      const dayData = getDailyAnalysis(dateString, dailyRecords, carConfig);
+
+      weekData.push({
+        dia: format(currentDate, "E", { locale: ptBR }),
+        uber: dayData?.ganhosUber || 0,
+        '99': dayData?.ganhos99 || 0,
+        total: (dayData?.ganhosUber || 0) + (dayData?.ganhos99 || 0)
+      });
+    }
+    return weekData;
+  };
+
+  const getExpenseDistributionData = () => {
+    // Definindo uma paleta de cores para os gastos
+    const colors = [
+      'hsl(var(--destructive))', // Cor para gastos
+      'hsl(var(--primary))',
+      'hsl(var(--secondary))',
+      'hsl(var(--warning))',
+      'hsl(var(--info))',
+      '#8dd1e1',
+      '#d084d0'
+    ];
+    const expenseEntries = Object.entries(expensesByCategory).filter(([name, value]) => value > 0);
+
+    return expenseEntries.map(([name, value], index) => ({
+      name,
+      value,
+      color: colors[index % colors.length]
+    }));
+  };
+
+  const weeklyEarningsData = getWeeklyEarningsData();
+  const expenseData = getExpenseDistributionData();
+
+  const netProfit = analyzedData?.lucroLiquido || 0;
+  const earningsPerHour = (analyzedData?.tempoTotalTrabalhado || analyzedData?.tempoTrabalhado || 0) > 0 ? (analyzedData?.lucroLiquido || 0) / ((analyzedData?.tempoTotalTrabalhado || analyzedData?.tempoTrabalhado || 0) / 60) : 0;
+  const costPerKm = (analyzedData?.kmTotais || analyzedData?.kmRodados || 0) > 0 ? (analyzedData?.gastosTotal || 0) / (analyzedData?.kmTotais || analyzedData?.kmRodados || 0) : 0;
   const totalTimeInHours = (analyzedData?.tempoTotalTrabalhado || analyzedData?.tempoTrabalhado || 0) / 60;
   const totalKm = (analyzedData?.kmTotais || analyzedData?.kmRodados || 0);
 
@@ -102,6 +153,13 @@ export const EnhancedDashboard = () => {
                   initialFocus
                   locale={ptBR}
                   weekStartsOn={1}
+                  modifiers={{
+                    today,
+                  }}
+                  modifiersClassNames={{
+                    today: "bg-blue-500 text-white rounded-full",
+                    selected: "bg-green-600 text-white rounded-full",
+                  }}
                 />
               ) : (
                 <Calendar
@@ -115,9 +173,21 @@ export const EnhancedDashboard = () => {
                   initialFocus
                   locale={ptBR}
                   weekStartsOn={1}
+                  modifiers={{
+                    today,
+                    selectedWeek: { from: selectedWeekStart, to: selectedWeekEnd },
+                    selectedDay: selectedDate,
+                  }}
+                  modifiersClassNames={{
+                    today: "bg-blue-500 text-white rounded-full",
+                    selectedWeek: "bg-green-200 text-green-900",
+                    selectedDay: "bg-green-600 text-white rounded-full",
+                  }}
                 />
+
               )}
             </PopoverContent>
+
           </Popover>
         </div>
       </div>
