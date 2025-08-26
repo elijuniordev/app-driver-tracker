@@ -1,4 +1,3 @@
-// tailwind.config.ts
 import type { Config } from "tailwindcss";
 
 export default {
@@ -26,7 +25,6 @@ export default {
 				background: 'hsl(var(--background))',
 				foreground: 'hsl(var(--foreground))',
 				primary: {
-					// ALTERADO: Tom de verde mais escuro para a seleção
 					DEFAULT: 'hsl(142 76% 25%)',
 					foreground: 'hsl(var(--primary-foreground))'
 				},
@@ -43,7 +41,6 @@ export default {
 					foreground: 'hsl(var(--muted-foreground))'
 				},
 				accent: {
-					// ALTERADO: Cor accent definida como azul para o dia atual
 					DEFAULT: 'hsl(221 83% 53%)',
 					foreground: 'hsl(var(--primary-foreground))'
 				},

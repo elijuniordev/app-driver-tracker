@@ -1,4 +1,3 @@
-// src/components/ui/calendar.tsx
 import * as React from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { DayPicker } from "react-day-picker";
@@ -41,9 +40,9 @@ function Calendar({
           "h-9 w-9 p-0 font-normal aria-selected:opacity-100"
         ),
         day_range_end: "day-range-end",
-        // ALTERADO: A classe para o dia selecionado agora usa bg-primary
+        // ALTERADO: A classe para o dia selecionado agora remove a borda de foco
         day_selected:
-          "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground",
+          "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground ring-0 focus-visible:ring-0",
         // ALTERADO: A classe para o dia de hoje agora usa bg-accent
         day_today: "bg-accent text-accent-foreground",
         day_outside:

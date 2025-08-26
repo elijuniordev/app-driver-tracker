@@ -49,7 +49,7 @@ All colors MUST be HSL.
     
     --info: 221 83% 53%;
     --info-foreground: 0 0% 98%;
-    --info-light: 221 83% 95%;
+    --info-light: 221 83% 15%;
 
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(142 76% 36%), hsl(142 76% 45%));

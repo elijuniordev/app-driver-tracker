@@ -177,15 +177,12 @@ export const EnhancedDashboard = () => {
                   },
                   today: new Date(),
                 }}
+                // REMOVIDO: O estilo 'today' foi removido para ser definido no CSS global
                 modifiersStyles={{
                   selectedWeek: {
                     backgroundColor: 'hsl(var(--primary))',
                     color: 'hsl(var(--primary-foreground))'
-                  },
-                  today: {
-                    backgroundColor: 'hsl(var(--accent))',
-                    color: 'hsl(var(--accent-foreground))',
-                  },
+                  }
                 }}
               />
             </PopoverContent>
