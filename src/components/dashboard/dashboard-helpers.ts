@@ -1,5 +1,5 @@
 import { DailyRecord, CarConfig } from "@/hooks/useDriverData";
-import { startOfWeek, addDays, isWithinInterval } from 'date-fns';
+import { startOfWeek, addDays, isWithinInterval, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
 
 export interface DailyTotals {
   date: string;
@@ -28,6 +28,27 @@ export interface WeeklyAnalysis {
   ganhoPorHora: number;
   tempoTotalTrabalhado: number;
   periodoSemana: {
+    inicio: string;
+    fim: string;
+  };
+  expensesByCategory: Record<string, number>;
+}
+
+export interface MonthlyAnalysis {
+  ganhosBrutos: number;
+  ganhosUber: number;
+  ganhos99: number;
+  gastosRegistrados: number;
+  aluguelTotal: number; // Agora é aluguel mensal
+  custoKmExcedido: number;
+  gastosTotal: number;
+  lucroLiquido: number;
+  kmTotais: number;
+  kmExcedidos: number;
+  limiteKm: number;
+  ganhoPorHora: number;
+  tempoTotalTrabalhado: number;
+  periodoMensal: {
     inicio: string;
     fim: string;
   };
@@ -67,7 +88,7 @@ export const getDailyAnalysis = (date: string, records: DailyRecord[], carConfig
   if (combustivelCalculado > 0) {
     expensesByCategory['Combustível'] = (expensesByCategory['Combustível'] || 0) + combustivelCalculado;
   }
-
+  
   const totalGastos = Object.values(expensesByCategory).reduce((sum, value) => sum + value, 0);
   const ganhosBrutos = record.ganhosUber + record.ganhos99;
   const lucroLiquido = ganhosBrutos - totalGastos;
@@ -90,6 +111,7 @@ export const getDailyAnalysis = (date: string, records: DailyRecord[], carConfig
     numeroCorridas99: record.numeroCorridas99,
     kmRodados99: record.kmRodados99,
     expensesByCategory,
+    gastos: totalGastos,
   };
 };
 
@@ -111,10 +133,8 @@ export const getWeeklyAnalysis = (startDate: string, records: DailyRecord[], car
   const kmTotais = weekRecords.reduce((sum, record) => sum + record.kmRodadosUber + record.kmRodados99, 0);
   const combustivelCalculado = calculateFuelCost(kmTotais, carConfig);
 
-  // Agrega todos os gastos por categoria, excluindo o combustível duplicado
   weekRecords.forEach(record => {
     record.gastos.forEach(gasto => {
-      // Ignora combustível manual para evitar duplicidade com o cálculo automático
       if (gasto.categoria !== 'Combustível') {
         expensesByCategory[gasto.categoria] = (expensesByCategory[gasto.categoria] || 0) + gasto.valor;
       }
@@ -128,7 +148,6 @@ export const getWeeklyAnalysis = (startDate: string, records: DailyRecord[], car
   const kmExcedidos = Math.max(0, kmTotais - carConfig.limiteKmSemanal);
   const custoKmExcedido = kmExcedidos * carConfig.valorKmExcedido;
   
-  // Calcula o aluguel semanal proporcional aos dias trabalhados
   const diasTrabalhados = weekRecords.length;
   const aluguelProporcional = carConfig.aluguelSemanal > 0 && diasTrabalhados > 0 
     ? (carConfig.aluguelSemanal / 7) * diasTrabalhados 
@@ -162,6 +181,77 @@ export const getWeeklyAnalysis = (startDate: string, records: DailyRecord[], car
     ganhoPorHora,
     tempoTotalTrabalhado,
     periodoSemana: {
+      inicio: start.toISOString().split('T')[0],
+      fim: end.toISOString().split('T')[0],
+    },
+    expensesByCategory,
+  };
+};
+
+export const getMonthlyAnalysis = (dateString: string, records: DailyRecord[], carConfig: CarConfig): MonthlyAnalysis => {
+  const date = createLocalDate(dateString);
+  const start = startOfMonth(date);
+  const end = endOfMonth(date);
+  
+  const monthRecords = records.filter(record => {
+    const recordDate = createLocalDate(record.date);
+    return isWithinInterval(recordDate, { start, end });
+  });
+
+  const ganhosUber = monthRecords.reduce((sum, record) => sum + record.ganhosUber, 0);
+  const ganhos99 = monthRecords.reduce((sum, record) => sum + record.ganhos99, 0);
+  const ganhosBrutos = ganhosUber + ganhos99;
+
+  const expensesByCategory: Record<string, number> = {};
+  
+  const kmTotais = monthRecords.reduce((sum, record) => sum + record.kmRodadosUber + record.kmRodados99, 0);
+  const combustivelCalculado = calculateFuelCost(kmTotais, carConfig);
+
+  monthRecords.forEach(record => {
+    record.gastos.forEach(gasto => {
+      if (gasto.categoria !== 'Combustível') {
+        expensesByCategory[gasto.categoria] = (expensesByCategory[gasto.categoria] || 0) + gasto.valor;
+      }
+    });
+  });
+
+  if (combustivelCalculado > 0) {
+    expensesByCategory['Combustível'] = (expensesByCategory['Combustível'] || 0) + combustivelCalculado;
+  }
+  
+  const numWeeksInMonth = Math.ceil((end.getDate() + start.getDay()) / 7);
+  const aluguelTotal = carConfig.aluguelSemanal * numWeeksInMonth;
+  const kmExcedidos = Math.max(0, kmTotais - (carConfig.limiteKmSemanal * numWeeksInMonth));
+  const custoKmExcedido = kmExcedidos * carConfig.valorKmExcedido;
+  
+  if (aluguelTotal > 0) {
+    expensesByCategory['Aluguel Mensal'] = (expensesByCategory['Aluguel Mensal'] || 0) + aluguelTotal;
+  }
+  
+  if (custoKmExcedido > 0) {
+    expensesByCategory['KM Excedido'] = (expensesByCategory['KM Excedido'] || 0) + custoKmExcedido;
+  }
+
+  const gastosTotal = Object.values(expensesByCategory).reduce((sum, value) => sum + value, 0);
+  const lucroLiquido = ganhosBrutos - gastosTotal;
+  const tempoTotalTrabalhado = monthRecords.reduce((sum, record) => sum + record.tempoTrabalhado, 0);
+  const ganhoPorHora = tempoTotalTrabalhado > 0 ? (lucroLiquido / (tempoTotalTrabalhado / 60)) : 0;
+
+  return {
+    ganhosBrutos,
+    ganhosUber,
+    ganhos99,
+    gastosRegistrados: Object.values(expensesByCategory).reduce((sum, value) => sum + value, 0),
+    aluguelTotal,
+    custoKmExcedido,
+    gastosTotal,
+    lucroLiquido,
+    kmTotais,
+    kmExcedidos,
+    limiteKm: carConfig.limiteKmSemanal,
+    ganhoPorHora,
+    tempoTotalTrabalhado,
+    periodoMensal: {
       inicio: start.toISOString().split('T')[0],
       fim: end.toISOString().split('T')[0],
     },

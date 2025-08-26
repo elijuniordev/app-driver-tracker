@@ -1,25 +1,45 @@
 import { DollarSign, Clock, Route, Car } from "lucide-react";
 import { StatCard } from "./StatCard";
-import { getDailyAnalysis, getWeeklyAnalysis, WeeklyAnalysis } from "./dashboard-helpers";
+import { DailyRecord, CarConfig } from "@/hooks/useDriverData";
+import { getDailyAnalysis, getWeeklyAnalysis, getMonthlyAnalysis, WeeklyAnalysis, MonthlyAnalysis } from "./dashboard-helpers";
 
 interface StatCardsSectionProps {
-  analyzedData: ReturnType<typeof getDailyAnalysis> | WeeklyAnalysis | null;
-  viewMode: 'daily' | 'weekly';
-  totalTimeInHours: number;
-  totalKm: number;
+  analyzedData: ReturnType<typeof getDailyAnalysis> | WeeklyAnalysis | MonthlyAnalysis | null;
+  viewMode: 'daily' | 'weekly' | 'monthly';
 }
 
-export const StatCardsSection = ({ analyzedData, viewMode, totalTimeInHours, totalKm }: StatCardsSectionProps) => {
-  const netProfit = analyzedData?.lucroLiquido || 0;
-  const earningsPerHour = totalTimeInHours > 0 ? (analyzedData?.lucroLiquido || 0) / totalTimeInHours : 0;
-  const costPerKm = totalKm > 0 ? (analyzedData?.gastosTotal || 0) / totalKm : 0;
+export const StatCardsSection = ({ analyzedData, viewMode }: StatCardsSectionProps) => {
+  let totalTimeInHours = 0;
+  let totalKm = 0;
+  let netProfit = 0;
+  let totalExpenses = 0;
+
+  if (viewMode === 'daily' && analyzedData && 'tempoTrabalhado' in analyzedData) {
+    totalTimeInHours = (analyzedData.tempoTrabalhado || 0) / 60;
+    totalKm = (analyzedData.kmRodados || 0);
+    netProfit = analyzedData.lucroLiquido;
+    totalExpenses = analyzedData.gastosTotal;
+  } else if (viewMode === 'weekly' && analyzedData && 'tempoTotalTrabalhado' in analyzedData) {
+    totalTimeInHours = (analyzedData.tempoTotalTrabalhado || 0) / 60;
+    totalKm = (analyzedData.kmTotais || 0);
+    netProfit = analyzedData.lucroLiquido;
+    totalExpenses = analyzedData.gastosTotal;
+  } else if (viewMode === 'monthly' && analyzedData && 'tempoTotalTrabalhado' in analyzedData) {
+    totalTimeInHours = (analyzedData.tempoTotalTrabalhado || 0) / 60;
+    totalKm = (analyzedData.kmTotais || 0);
+    netProfit = analyzedData.lucroLiquido;
+    totalExpenses = analyzedData.gastosTotal;
+  }
+
+  const earningsPerHour = totalTimeInHours > 0 ? (netProfit / totalTimeInHours) : 0;
+  const costPerKm = totalKm > 0 ? (totalExpenses / totalKm) : 0;
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       <StatCard
         title="Lucro Líquido"
         value={`R$ ${netProfit.toFixed(2)}`}
-        subtitle={viewMode === 'daily' ? 'Hoje' : 'Esta semana'}
+        subtitle={viewMode === 'daily' ? 'Hoje' : viewMode === 'weekly' ? 'Esta semana' : 'Este mês'}
         icon={DollarSign}
         variant={netProfit > 0 ? 'success' : 'destructive'}
         trend={netProfit > 0 ? 'up' : 'down'}
@@ -40,8 +60,8 @@ export const StatCardsSection = ({ analyzedData, viewMode, totalTimeInHours, tot
       />
       <StatCard
         title="Total de Gastos"
-        value={`R$ ${(analyzedData?.gastosTotal || 0).toFixed(2)}`}
-        subtitle={viewMode === 'daily' ? 'Hoje' : 'Esta semana'}
+        value={`R$ ${totalExpenses.toFixed(2)}`}
+        subtitle={viewMode === 'daily' ? 'Hoje' : viewMode === 'weekly' ? 'Esta semana' : 'Este mês'}
         icon={Car}
         variant="warning"
       />

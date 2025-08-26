@@ -1,23 +1,23 @@
 import { useState, useEffect } from "react";
-import { TrendingUp, Clock, Route, DollarSign, AlertTriangle, Car, Calendar as CalendarIcon } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Calendar as CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useDriverData } from "@/hooks/useDriverData";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { StatCard } from "./dashboard/StatCard";
-import { getDailyAnalysis, getWeeklyAnalysis, getWeekStart, WeeklyAnalysis } from "./dashboard/dashboard-helpers";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { format, startOfWeek, endOfWeek } from "date-fns";
+import { format, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useDriverData } from "@/hooks/useDriverData";
+import { getDailyAnalysis, getWeeklyAnalysis, getMonthlyAnalysis, WeeklyAnalysis, MonthlyAnalysis } from "./dashboard/dashboard-helpers";
 import { StatCardsSection } from "./dashboard/StatCardsSection";
 import { WeeklyEarningsChart } from "./dashboard/WeeklyEarningsChart";
 import { ExpenseDistributionChart } from "./dashboard/ExpenseDistributionChart";
 import { PlatformBreakdownCard } from "./dashboard/PlatformBreakdownCard";
 import { EfficiencyMetricsCard } from "./dashboard/EfficiencyMetricsCard";
 
+// Definindo o tipo de dado para a análise do dashboard
+type AnalyzedDataType = ReturnType<typeof getDailyAnalysis> | WeeklyAnalysis | MonthlyAnalysis;
+
 export const EnhancedDashboard = () => {
-  const [viewMode, setViewMode] = useState<'daily' | 'weekly'>('weekly');
+  const [viewMode, setViewMode] = useState<'daily' | 'weekly' | 'monthly'>('weekly');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const { dailyRecords, loading, carConfig, fetchDailyRecords } = useDriverData();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -26,78 +26,60 @@ export const EnhancedDashboard = () => {
     fetchDailyRecords();
   }, [fetchDailyRecords]);
 
-  let analyzedData;
+  let analyzedData: AnalyzedDataType | null;
   let expensesByCategory: Record<string, number> = {};
 
   const currentDayString = format(selectedDate, "yyyy-MM-dd");
 
   if (viewMode === 'daily') {
     analyzedData = getDailyAnalysis(currentDayString, dailyRecords, carConfig);
-    expensesByCategory = analyzedData?.expensesByCategory || {};
-  } else {
+  } else if (viewMode === 'weekly') {
     analyzedData = getWeeklyAnalysis(currentDayString, dailyRecords, carConfig);
-    expensesByCategory = (analyzedData as WeeklyAnalysis)?.expensesByCategory || {};
+  } else { // monthly
+    analyzedData = getMonthlyAnalysis(currentDayString, dailyRecords, carConfig);
   }
   
-  const getWeeklyEarningsData = () => {
-    const weekStartString = getWeekStart(currentDayString);
-    const weekData = [];
+  if (analyzedData) {
+    expensesByCategory = analyzedData.expensesByCategory;
+  }
 
-    const weekStartDate = new Date(`${weekStartString}T00:00:00`);
+  // Lógica corrigida para calcular as métricas com base no modo de visualização
+  let totalTimeInHours = 0;
+  let totalKm = 0;
+  let ganhosUber = 0;
+  let ganhos99 = 0;
+  let totalExpenses = 0;
 
-    for (let i = 0; i < 7; i++) {
-      const currentDate = new Date(weekStartDate);
-      currentDate.setDate(weekStartDate.getDate() + i);
-      const dateString = format(currentDate, "yyyy-MM-dd");
-      const dayData = getDailyAnalysis(dateString, dailyRecords, carConfig);
-
-      weekData.push({
-        dia: format(currentDate, "E", { locale: ptBR }),
-        uber: dayData?.ganhosUber || 0,
-        '99': dayData?.ganhos99 || 0,
-        total: (dayData?.ganhosUber || 0) + (dayData?.ganhos99 || 0)
-      });
-    }
-    return weekData;
-  };
-
-  const getExpenseDistributionData = () => {
-    // Definindo uma paleta de cores para os gastos
-    const colors = [
-      'hsl(var(--destructive))', // Cor para gastos
-      'hsl(var(--primary))',
-      'hsl(var(--secondary))',
-      'hsl(var(--warning))',
-      'hsl(var(--info))',
-      '#8dd1e1',
-      '#d084d0'
-    ];
-    const expenseEntries = Object.entries(expensesByCategory).filter(([name, value]) => value > 0);
-
-    return expenseEntries.map(([name, value], index) => ({
-      name,
-      value,
-      color: colors[index % colors.length]
-    }));
-  };
-
-  const weeklyEarningsData = getWeeklyEarningsData();
-  const expenseData = getExpenseDistributionData();
-
-  const netProfit = analyzedData?.lucroLiquido || 0;
-  const earningsPerHour = (analyzedData?.tempoTotalTrabalhado || analyzedData?.tempoTrabalhado || 0) > 0 ? (analyzedData?.lucroLiquido || 0) / ((analyzedData?.tempoTotalTrabalhado || analyzedData?.tempoTrabalhado || 0) / 60) : 0;
-  const costPerKm = (analyzedData?.kmTotais || analyzedData?.kmRodados || 0) > 0 ? (analyzedData?.gastosTotal || 0) / (analyzedData?.kmTotais || analyzedData?.kmRodados || 0) : 0;
-  const totalTimeInHours = (analyzedData?.tempoTotalTrabalhado || analyzedData?.tempoTrabalhado || 0) / 60;
-  const totalKm = (analyzedData?.kmTotais || analyzedData?.kmRodados || 0);
+  if (viewMode === 'daily' && analyzedData) {
+    totalTimeInHours = (analyzedData.tempoTrabalhado || 0) / 60;
+    totalKm = (analyzedData.kmRodados || 0);
+    ganhosUber = analyzedData.ganhosUber || 0;
+    ganhos99 = analyzedData.ganhos99 || 0;
+    totalExpenses = analyzedData.gastosTotal || 0;
+  } else if ((viewMode === 'weekly' || viewMode === 'monthly') && analyzedData) {
+    totalTimeInHours = (analyzedData.tempoTotalTrabalhado || 0) / 60;
+    totalKm = (analyzedData.kmTotais || 0);
+    ganhosUber = analyzedData.ganhosUber || 0;
+    ganhos99 = analyzedData.ganhos99 || 0;
+    totalExpenses = analyzedData.gastosTotal || 0;
+  }
 
   const today = new Date();
   const selectedWeekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
   const selectedWeekEnd = endOfWeek(selectedDate, { weekStartsOn: 1 });
+  const selectedMonthStart = startOfMonth(selectedDate);
+  const selectedMonthEnd = endOfMonth(selectedDate);
 
-  const formatWeekForDisplay = () => {
-    const start = format(selectedWeekStart, "dd/MM", { locale: ptBR });
-    const end = format(selectedWeekEnd, "dd/MM", { locale: ptBR });
-    return `${start} - ${end}`;
+  const formatPeriodForDisplay = () => {
+    if (viewMode === 'daily') {
+      return format(selectedDate, "PPP", { locale: ptBR });
+    } else if (viewMode === 'weekly') {
+      const start = format(selectedWeekStart, "dd/MM", { locale: ptBR });
+      const end = format(selectedWeekEnd, "dd/MM", { locale: ptBR });
+      return `${start} - ${end}`;
+    } else { // monthly
+      return format(selectedDate, "MMMM yyyy", { locale: ptBR });
+    }
   };
 
   return (
@@ -106,7 +88,7 @@ export const EnhancedDashboard = () => {
         <div>
           <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
           <p className="text-muted-foreground">
-            {viewMode === 'daily' ? 'Resumo do dia' : 'Resumo da semana'}
+            {viewMode === 'daily' ? 'Resumo do dia' : viewMode === 'weekly' ? 'Resumo da semana' : 'Resumo do mês'}
           </p>
         </div>
 
@@ -126,6 +108,13 @@ export const EnhancedDashboard = () => {
             >
               Semanal
             </Button>
+            <Button
+              variant={viewMode === 'monthly' ? 'default' : 'outline'}
+              onClick={() => setViewMode('monthly')}
+              size="sm"
+            >
+              Mensal
+            </Button>
           </div>
 
           <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
@@ -135,9 +124,7 @@ export const EnhancedDashboard = () => {
                 className="w-auto justify-start text-left font-normal"
               >
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {viewMode === 'daily'
-                  ? format(selectedDate, "PPP", { locale: ptBR })
-                  : formatWeekForDisplay()}
+                {formatPeriodForDisplay()}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="end">
@@ -161,7 +148,7 @@ export const EnhancedDashboard = () => {
                     selected: "bg-green-600 text-white rounded-full",
                   }}
                 />
-              ) : (
+              ) : viewMode === "weekly" ? (
                 <Calendar
                   mode="single"
                   selected={selectedDate}
@@ -184,10 +171,30 @@ export const EnhancedDashboard = () => {
                     selectedDay: "bg-green-600 text-white rounded-full",
                   }}
                 />
-
+              ) : ( // monthly view
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(day) => {
+                    if (!day) return;
+                    setSelectedDate(day);
+                    setIsPopoverOpen(false);
+                  }}
+                  initialFocus
+                  locale={ptBR}
+                  weekStartsOn={1}
+                  modifiers={{
+                    today,
+                    selectedMonth: { from: selectedMonthStart, to: selectedMonthEnd },
+                  }}
+                  modifiersClassNames={{
+                    today: "bg-blue-500 text-white rounded-full",
+                    selectedMonth: "bg-green-200 text-green-900",
+                    selected: "bg-green-600 text-white rounded-full",
+                  }}
+                />
               )}
             </PopoverContent>
-
           </Popover>
         </div>
       </div>
@@ -199,8 +206,6 @@ export const EnhancedDashboard = () => {
           <StatCardsSection
             analyzedData={analyzedData}
             viewMode={viewMode}
-            totalTimeInHours={totalTimeInHours}
-            totalKm={totalKm}
           />
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <WeeklyEarningsChart
@@ -214,13 +219,13 @@ export const EnhancedDashboard = () => {
           </div>
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <PlatformBreakdownCard
-              ganhosUber={analyzedData?.ganhosUber || 0}
-              ganhos99={analyzedData?.ganhos99 || 0}
+              ganhosUber={ganhosUber}
+              ganhos99={ganhos99}
               dailyRecords={dailyRecords}
             />
             <EfficiencyMetricsCard
               consumoKmL={carConfig.consumoKmL}
-              totalExpenses={analyzedData?.gastosTotal || 0}
+              totalExpenses={totalExpenses}
               totalTimeInHours={totalTimeInHours}
             />
           </div>
