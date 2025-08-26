@@ -10,6 +10,22 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
+
+    --success: 142.1 76.2% 36.3%;
+    --success-foreground: 142.1 76.2% 15.3%;
+
+    --warning: 48 96% 89%;
+    --warning-foreground: 48 96% 29%;
+
+    --info: 220 89% 60%;
+    --info-foreground: 220 89% 20%;
+
+    --graph1: 172 70% 46%;
+    --graph2: 262 70% 60%;
+    --graph3: 30 90% 60%;
+    --graph4: 340 70% 60%;
+    --graph5: 200 70% 50%;
+
     --background: 249 100% 99%;
     --foreground: 222 47% 11%;
 

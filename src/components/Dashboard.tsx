@@ -1,19 +1,20 @@
 import { useState, useEffect } from "react";
-import { TrendingUp, Clock, Route, DollarSign, AlertTriangle, Car, Calendar as CalendarIcon } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Calendar as CalendarIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useDriverData } from "@/hooks/useDriverData";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import { StatCard } from "./dashboard/StatCard";
-import { DailyTotals, getDailyAnalysis, getWeeklyAnalysis, getWeekStart } from "./dashboard/dashboard-helpers";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { format, startOfWeek, endOfWeek } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { DateRange } from "react-day-picker";
+import { useDriverData } from "@/hooks/useDriverData";
+import { getDailyAnalysis, getWeeklyAnalysis, WeeklyAnalysis } from "./dashboard/dashboard-helpers";
+import { StatCardsSection } from "./dashboard/StatCardsSection";
+import { WeeklyEarningsChart } from "./dashboard/WeeklyEarningsChart";
+import { ExpenseDistributionChart } from "./dashboard/ExpenseDistributionChart";
+import { PlatformBreakdownCard } from "./dashboard/PlatformBreakdownCard";
+import { EfficiencyMetricsCard } from "./dashboard/EfficiencyMetricsCard";
 
 export const EnhancedDashboard = () => {
-  const [viewMode, setViewMode] = useState<'daily' | 'weekly'>('daily');
+  const [viewMode, setViewMode] = useState<'daily' | 'weekly'>('weekly');
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const { dailyRecords, loading, carConfig, fetchDailyRecords } = useDriverData();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -22,95 +23,21 @@ export const EnhancedDashboard = () => {
     fetchDailyRecords();
   }, [fetchDailyRecords]);
 
-  let dailyTotals: DailyTotals;
-  let weeklyData: ReturnType<typeof getWeeklyAnalysis> | undefined;
+  let analyzedData;
+  let expensesByCategory: Record<string, number> = {};
 
   const currentDayString = format(selectedDate, "yyyy-MM-dd");
 
   if (viewMode === 'daily') {
-    const dailyAnalysis = getDailyAnalysis(currentDayString, dailyRecords, carConfig);
-    dailyTotals = dailyAnalysis ? {
-      date: currentDayString,
-      totalEarnings: dailyAnalysis.ganhosBrutos,
-      uberEarnings: dailyAnalysis.ganhosUber,
-      nineNineEarnings: dailyAnalysis.ganhos99,
-      totalKm: dailyAnalysis.kmRodados,
-      totalTime: dailyAnalysis.tempoTrabalhado,
-      avgConsumption: carConfig.consumoKmL,
-      totalExpenses: dailyAnalysis.gastosTotal,
-      expensesByCategory: dailyRecords.find(r => r.date === currentDayString)?.gastos.reduce((acc, expense) => {
-        acc[expense.categoria] = (acc[expense.categoria] || 0) + expense.valor;
-        return acc;
-      }, {} as Record<string, number>) || {}
-    } : {
-      date: currentDayString,
-      totalEarnings: 0,
-      uberEarnings: 0,
-      nineNineEarnings: 0,
-      totalKm: 0,
-      totalTime: 0,
-      avgConsumption: carConfig.consumoKmL,
-      totalExpenses: 0,
-      expensesByCategory: {}
-    };
+    analyzedData = getDailyAnalysis(currentDayString, dailyRecords, carConfig);
+    expensesByCategory = analyzedData?.expensesByCategory || {};
   } else {
-    weeklyData = getWeeklyAnalysis(currentDayString, dailyRecords, carConfig);
-    dailyTotals = {
-      date: currentDayString,
-      totalEarnings: weeklyData.ganhosBrutos,
-      uberEarnings: weeklyData.ganhosUber,
-      nineNineEarnings: weeklyData.ganhos99,
-      totalKm: weeklyData.kmTotais,
-      totalTime: weeklyData.tempoTotalTrabalhado,
-      avgConsumption: carConfig.consumoKmL,
-      totalExpenses: weeklyData.gastosTotal,
-      expensesByCategory: {}
-    };
+    analyzedData = getWeeklyAnalysis(currentDayString, dailyRecords, carConfig);
+    expensesByCategory = (analyzedData as WeeklyAnalysis)?.expensesByCategory || {};
   }
-
-  const getWeeklyEarningsData = () => {
-    const weekStartString = getWeekStart(currentDayString);
-    const weekData = [];
-
-    const weekStartDate = new Date(`${weekStartString}T00:00:00`);
-
-    for (let i = 0; i < 7; i++) {
-      const currentDate = new Date(weekStartDate);
-      currentDate.setDate(weekStartDate.getDate() + i);
-      const dateString = format(currentDate, "yyyy-MM-dd");
-      const dayData = getDailyAnalysis(dateString, dailyRecords, carConfig);
-
-      weekData.push({
-        dia: format(currentDate, "E", { locale: ptBR }),
-        uber: dayData?.ganhosUber || 0,
-        '99': dayData?.ganhos99 || 0,
-        total: (dayData?.ganhosUber || 0) + (dayData?.ganhos99 || 0)
-      });
-    }
-    return weekData;
-  };
-
-  const getExpenseDistributionData = () => {
-    const expensesByCategory = dailyRecords.find(r => r.date === currentDayString)?.gastos.reduce((acc, expense) => {
-      acc[expense.categoria] = (acc[expense.categoria] || 0) + expense.valor;
-      return acc;
-    }, {} as Record<string, number>) || {};
-
-    const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7c7c', '#8dd1e1', '#d084d0'];
-
-    return Object.entries(expensesByCategory).map(([name, value], index) => ({
-      name,
-      value,
-      color: colors[index % colors.length]
-    })).filter(item => item.value > 0);
-  };
-
-  const weeklyEarningsData = getWeeklyEarningsData();
-  const expenseData = getExpenseDistributionData();
-
-  const netProfit = dailyTotals.totalEarnings - dailyTotals.totalExpenses;
-  const earningsPerHour = dailyTotals.totalTime > 0 ? (dailyTotals.totalEarnings / (dailyTotals.totalTime / 60)) : 0;
-  const costPerKm = dailyTotals.totalKm > 0 ? (dailyTotals.totalExpenses / dailyTotals.totalKm) : 0;
+  
+  const totalTimeInHours = (analyzedData?.tempoTotalTrabalhado || analyzedData?.tempoTrabalhado || 0) / 60;
+  const totalKm = (analyzedData?.kmTotais || analyzedData?.kmRodados || 0);
 
   const today = new Date();
   const selectedWeekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
@@ -175,13 +102,6 @@ export const EnhancedDashboard = () => {
                   initialFocus
                   locale={ptBR}
                   weekStartsOn={1}
-                  modifiers={{
-                    today,
-                  }}
-                  modifiersClassNames={{
-                    today: "bg-blue-500 text-white rounded-full", // hoje azul
-                    selected: "bg-green-600 text-white rounded-full", // dia selecionado verde escuro
-                  }}
                 />
               ) : (
                 <Calendar
@@ -195,21 +115,9 @@ export const EnhancedDashboard = () => {
                   initialFocus
                   locale={ptBR}
                   weekStartsOn={1}
-                  modifiers={{
-                    today,
-                    selectedWeek: { from: selectedWeekStart, to: selectedWeekEnd }, // pinta a semana
-                    selectedDay: selectedDate, // pinta o dia clicado
-                  }}
-                  modifiersClassNames={{
-                    today: "bg-blue-500 text-white rounded-full", // hoje azul
-                    selectedWeek: "bg-green-200 text-green-900", // semana verde claro
-                    selectedDay: "bg-green-600 text-white rounded-full", // dia verde escuro
-                  }}
                 />
-
               )}
             </PopoverContent>
-
           </Popover>
         </div>
       </div>
@@ -218,159 +126,33 @@ export const EnhancedDashboard = () => {
         <p>Carregando dados...</p>
       ) : (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <StatCard
-              title="Lucro Líquido"
-              value={`R$ ${netProfit.toFixed(2)}`}
-              subtitle={viewMode === 'daily' ? 'Hoje' : 'Esta semana'}
-              icon={DollarSign}
-              variant={netProfit > 0 ? 'success' : 'destructive'}
-              trend={netProfit > 0 ? 'up' : 'down'}
+          <StatCardsSection
+            analyzedData={analyzedData}
+            viewMode={viewMode}
+            totalTimeInHours={totalTimeInHours}
+            totalKm={totalKm}
+          />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <WeeklyEarningsChart
+              currentDayString={currentDayString}
+              dailyRecords={dailyRecords}
+              carConfig={carConfig}
             />
-
-            <StatCard
-              title="Ganho por Hora"
-              value={`R$ ${earningsPerHour.toFixed(2)}`}
-              subtitle={`${(dailyTotals.totalTime / 60).toFixed(1)}h trabalhadas`}
-              icon={Clock}
-              variant="default"
-            />
-
-            <StatCard
-              title="Custo por KM"
-              value={`R$ ${costPerKm.toFixed(2)}`}
-              subtitle={`${dailyTotals.totalKm.toFixed(1)} km rodados`}
-              icon={Route}
-              variant="warning"
-            />
-
-            <StatCard
-              title="Total de Gastos"
-              value={`R$ ${dailyTotals.totalExpenses.toFixed(2)}`}
-              subtitle={viewMode === 'daily' ? 'Hoje' : 'Esta semana'}
-              icon={Car}
-              variant="warning"
+            <ExpenseDistributionChart
+              expensesByCategory={expensesByCategory}
             />
           </div>
-
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5" />
-                  Evolução dos Ganhos Semanais
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {weeklyEarningsData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <BarChart data={weeklyEarningsData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="dia" />
-                      <YAxis />
-                      <Tooltip
-                        formatter={(value: number) => [`R$ ${value.toFixed(2)}`, '']}
-                        labelFormatter={(label) => `${label}`}
-                      />
-                      <Bar dataKey="uber" stackId="a" fill="hsl(var(--primary))" name="Uber" />
-                      <Bar dataKey="99" stackId="a" fill="hsl(var(--secondary))" name="99" />
-                    </BarChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                    Nenhum dado disponível
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <AlertTriangle className="h-5 w-5" />
-                  Distribuição de Gastos
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {expenseData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <PieChart>
-                      <Pie
-                        data={expenseData}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={80}
-                        fill="#8884d8"
-                        dataKey="value"
-                      >
-                        {expenseData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip formatter={(value: number) => [`R$ ${value.toFixed(2)}`, '']} />
-                    </PieChart>
-                  </ResponsiveContainer>
-                ) : (
-                  <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-                    Nenhum dado disponível
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Breakdown por Plataforma</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">Uber</span>
-                    <div className="text-right">
-                      <p className="font-bold text-primary">R$ {dailyTotals.uberEarnings.toFixed(2)}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {dailyRecords.filter(e => e.ganhosUber > 0).length} dias registrados
-                      </p>
-                    </div>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">99</span>
-                    <div className="text-right">
-                      <p className="font-bold text-secondary">R$ {dailyTotals.nineNineEarnings.toFixed(2)}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {dailyRecords.filter(e => e.ganhos99 > 0).length} dias registrados
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Métricas de Eficiência</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">Consumo Médio</span>
-                    <span className="font-bold">{dailyTotals.avgConsumption.toFixed(1)} km/l</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">Total de Gastos</span>
-                    <span className="font-bold text-destructive">R$ {dailyTotals.totalExpenses.toFixed(2)}</span>
-                  </div>
-                  <div className="flex justify-between items-center">
-                    <span className="font-medium">Tempo Total</span>
-                    <span className="font-bold">{(dailyTotals.totalTime / 60).toFixed(1)}h</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            <PlatformBreakdownCard
+              ganhosUber={analyzedData?.ganhosUber || 0}
+              ganhos99={analyzedData?.ganhos99 || 0}
+              dailyRecords={dailyRecords}
+            />
+            <EfficiencyMetricsCard
+              consumoKmL={carConfig.consumoKmL}
+              totalExpenses={analyzedData?.gastosTotal || 0}
+              totalTimeInHours={totalTimeInHours}
+            />
           </div>
         </div>
       )}

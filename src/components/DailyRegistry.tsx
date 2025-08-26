@@ -59,15 +59,15 @@ export const DailyRegistry = ({ onSave, carConfig }: DailyRegistryProps) => {
     
     const tempoTotalMinutos = formData.tempoTrabalhado.horas * 60 + formData.tempoTrabalhado.minutos;
     
-    const gastosComCombustivel = [...gastos];
+    const gastosToSave = [...gastos];
     const combustivelManual = gastos.find(g => g.categoria === 'Combustível');
     
     // Adicionar o gasto de combustível calculado somente se não houver um gasto manual
     if (combustivelCalculado > 0 && !combustivelManual) {
-      gastosComCombustivel.push({
+      gastosToSave.push({
         id: Date.now(),
         valor: combustivelCalculado,
-        categoria: 'Combustível (Auto)',
+        categoria: 'Combustível', // Alterado para a categoria correta
       });
     }
     
@@ -80,7 +80,7 @@ export const DailyRegistry = ({ onSave, carConfig }: DailyRegistryProps) => {
       kmRodados99: formData.kmRodados99,
       ganhosUber: formData.ganhosUber,
       ganhos99: formData.ganhos99,
-      gastos: gastosComCombustivel,
+      gastos: gastosToSave,
     };
 
     onSave(record);
@@ -286,11 +286,11 @@ export const DailyRegistry = ({ onSave, carConfig }: DailyRegistryProps) => {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Combustível calculado automaticamente */}
-            {combustivelCalculado > 0 && (
-              <div className="bg-success-light border border-success/20 p-3 rounded-md">
+            {combustivelCalculado > 0 && !gastos.find(g => g.categoria === 'Combustível') && (
+              <div className="bg-primary/5 border border-primary/20 p-3 rounded-md">
                 <div className="flex items-center gap-2 mb-2">
-                  <Fuel className="h-4 w-4 text-success" />
-                  <span className="font-medium text-success">Combustível Calculado Automaticamente</span>
+                  <Fuel className="h-4 w-4 text-primary" />
+                  <span className="font-medium text-primary">Combustível Calculado Automaticamente</span>
                 </div>
                 <div className="text-sm text-muted-foreground mb-2">
                   {totalKm > 0 && carConfig.consumoKmL > 0 && (
@@ -300,7 +300,7 @@ export const DailyRegistry = ({ onSave, carConfig }: DailyRegistryProps) => {
                     </>
                   )}
                 </div>
-                <div className="font-medium text-success">R$ {combustivelCalculado.toFixed(2)}</div>
+                <div className="font-medium text-primary">R$ {combustivelCalculado.toFixed(2)}</div>
               </div>
             )}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-2">

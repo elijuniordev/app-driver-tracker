@@ -1,63 +1,41 @@
-// src/components/dashboard/StatCard.tsx
-import { Card, CardContent } from "@/components/ui/card";
-import { TrendingUp, TrendingDown } from "lucide-react";
-import React from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { LucideIcon, TrendingUp, TrendingDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface StatCardProps {
   title: string;
   value: string;
-  subtitle?: string;
-  icon: React.ElementType;
-  trend?: 'up' | 'down';
-  variant?: 'default' | 'success' | 'warning' | 'destructive';
+  subtitle: string;
+  icon: LucideIcon;
+  variant?: 'default' | 'success' | 'destructive' | 'warning';
+  trend?: 'up' | 'down' | 'neutral';
 }
 
-export const StatCard = ({ 
-  title, 
-  value, 
-  subtitle, 
-  icon: Icon, 
-  trend, 
-  variant = 'default' 
-}: StatCardProps) => {
+export const StatCard = ({ title, value, subtitle, icon: Icon, variant = 'default', trend = 'neutral' }: StatCardProps) => {
   const variantClasses = {
-    default: 'border-border',
-    success: 'border-success/20 bg-success/5',
-    warning: 'border-warning/20 bg-warning/5',
-    destructive: 'border-destructive/20 bg-destructive/5',
+    default: "bg-card text-card-foreground",
+    success: "bg-success text-success-foreground",
+    destructive: "bg-destructive text-destructive-foreground",
+    warning: "bg-warning text-warning-foreground",
   };
 
-  const iconClasses = {
-    default: 'text-primary',
-    success: 'text-success',
-    warning: 'text-warning',
-    destructive: 'text-destructive',
-  };
+  const trendIcon = trend === 'up' ? <TrendingUp className="h-4 w-4 text-green-500" /> : trend === 'down' ? <TrendingDown className="h-4 w-4 text-red-500" /> : null;
 
   return (
-    <Card className={`${variantClasses[variant]} transition-all hover:shadow-md`}>
-      <CardContent className="p-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-muted-foreground">{title}</p>
-            <p className="text-2xl font-bold">{value}</p>
-            {subtitle && (
-              <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
-            )}
-          </div>
-          <div className="flex flex-col items-end gap-2">
-            <Icon className={`h-6 w-6 ${iconClasses[variant]}`} />
-            {trend && (
-              <div className="flex items-center gap-1">
-                {trend === 'up' ? (
-                  <TrendingUp className="h-3 w-3 text-success" />
-                ) : (
-                  <TrendingDown className="h-3 w-3 text-destructive" />
-                )}
-              </div>
-            )}
-          </div>
+    <Card className={cn("flex flex-col", variantClasses[variant])}>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <Icon className={cn("h-4 w-4 text-muted-foreground", {
+          "text-success-foreground": variant === 'success',
+          "text-destructive-foreground": variant === 'destructive',
+          "text-warning-foreground": variant === 'warning',
+        })} />
+      </CardHeader>
+      <CardContent className="flex-grow flex flex-col justify-between">
+        <div className="text-2xl font-bold flex items-center gap-2">
+          {value} {trendIcon}
         </div>
+        <p className="text-xs text-muted-foreground">{subtitle}</p>
       </CardContent>
     </Card>
   );
