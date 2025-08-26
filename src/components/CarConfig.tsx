@@ -1,11 +1,16 @@
 import { useState } from "react";
-import { Car, Save } from "lucide-react";
+import { Car, Save, Calendar as CalendarIcon } from "lucide-react";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import { useToast } from "@/hooks/use-toast";
 import { CarConfig as CarConfigType } from "@/hooks/useDriverData";
+import { cn, createLocalDate } from "@/lib/utils";
 
 interface CarConfigProps {
   config: CarConfigType;
@@ -14,6 +19,7 @@ interface CarConfigProps {
 
 export const CarConfig = ({ config, onSave }: CarConfigProps) => {
   const [formData, setFormData] = useState<CarConfigType>(config);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const { toast } = useToast();
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -28,8 +34,15 @@ export const CarConfig = ({ config, onSave }: CarConfigProps) => {
   const handleChange = (field: keyof CarConfigType, value: string) => {
     setFormData(prev => ({
       ...prev,
-      [field]: field === 'modelo' ? value : parseFloat(value) || 0,
+      [field]: ['modelo', 'dataInicioContrato'].includes(field) ? value : parseFloat(value) || 0,
     }));
+  };
+
+  const handleDateChange = (date: Date | undefined) => {
+    if (date) {
+      handleChange('dataInicioContrato', format(date, 'yyyy-MM-dd'));
+      setIsPopoverOpen(false);
+    }
   };
 
   return (
@@ -110,6 +123,51 @@ export const CarConfig = ({ config, onSave }: CarConfigProps) => {
                   placeholder="Ex: 12.5"
                   value={formData.consumoKmL || ''}
                   onChange={(e) => handleChange('consumoKmL', e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Novos campos para data de início e duração do contrato */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="data-inicio">Data de Início do Contrato</Label>
+                <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant={"outline"}
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !formData.dataInicioContrato && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {formData.dataInicioContrato ? (
+                        format(createLocalDate(formData.dataInicioContrato), "PPP", { locale: ptBR })
+                      ) : (
+                        <span>Selecione uma data</span>
+                      )}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={createLocalDate(formData.dataInicioContrato)}
+                      onSelect={handleDateChange}
+                      initialFocus
+                      locale={ptBR}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="duracao">Duração do Contrato (dias)</Label>
+                <Input
+                  id="duracao"
+                  type="number"
+                  min="0"
+                  placeholder="Ex: 60"
+                  value={formData.duracaoContratoDias || ''}
+                  onChange={(e) => handleChange('duracaoContratoDias', e.target.value)}
                 />
               </div>
             </div>

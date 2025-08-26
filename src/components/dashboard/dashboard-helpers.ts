@@ -1,5 +1,6 @@
 import { DailyRecord, CarConfig } from "@/hooks/useDriverData";
 import { startOfWeek, addDays, isWithinInterval, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
+import { createLocalDate } from "@/lib/utils";
 
 export interface DailyTotals {
   date: string;
@@ -39,7 +40,7 @@ export interface MonthlyAnalysis {
   ganhosUber: number;
   ganhos99: number;
   gastosRegistrados: number;
-  aluguelTotal: number; // Agora é aluguel mensal
+  aluguelTotal: number;
   custoKmExcedido: number;
   gastosTotal: number;
   lucroLiquido: number;
@@ -55,11 +56,6 @@ export interface MonthlyAnalysis {
   expensesByCategory: Record<string, number>;
 }
 
-const createLocalDate = (dateString: string): Date => {
-  const [year, month, day] = dateString.split('-').map(Number);
-  return new Date(year, month - 1, day);
-};
-
 export const getWeekStart = (dateString: string): string => {
   const d = createLocalDate(dateString);
   return startOfWeek(d, { weekStartsOn: 1 }).toISOString().split('T')[0];
@@ -73,13 +69,23 @@ const calculateFuelCost = (totalKm: number, carConfig: CarConfig): number => {
   return 0;
 };
 
+// Nova função para verificar se uma data está dentro do período de contrato
+const isWithinContract = (date: Date, carConfig: CarConfig): boolean => {
+  if (!carConfig.dataInicioContrato || !carConfig.duracaoContratoDias) {
+    return false;
+  }
+  const startDate = createLocalDate(carConfig.dataInicioContrato);
+  const endDate = addDays(startDate, carConfig.duracaoContratoDias);
+  return isWithinInterval(date, { start: startDate, end: endDate });
+};
+
 export const getDailyAnalysis = (date: string, records: DailyRecord[], carConfig: CarConfig) => {
   const record = records.find(r => r.date === date);
   if (!record) return null;
 
   const totalKm = record.kmRodadosUber + record.kmRodados99;
   const combustivelCalculado = calculateFuelCost(totalKm, carConfig);
-  
+
   const expensesByCategory = record.gastos.reduce((acc, expense) => {
     acc[expense.categoria] = (acc[expense.categoria] || 0) + expense.valor;
     return acc;
@@ -88,7 +94,7 @@ export const getDailyAnalysis = (date: string, records: DailyRecord[], carConfig
   if (combustivelCalculado > 0) {
     expensesByCategory['Combustível'] = (expensesByCategory['Combustível'] || 0) + combustivelCalculado;
   }
-  
+
   const totalGastos = Object.values(expensesByCategory).reduce((sum, value) => sum + value, 0);
   const ganhosBrutos = record.ganhosUber + record.ganhos99;
   const lucroLiquido = ganhosBrutos - totalGastos;
@@ -129,7 +135,7 @@ export const getWeeklyAnalysis = (startDate: string, records: DailyRecord[], car
   const ganhosBrutos = ganhosUber + ganhos99;
 
   const expensesByCategory: Record<string, number> = {};
-  
+
   const kmTotais = weekRecords.reduce((sum, record) => sum + record.kmRodadosUber + record.kmRodados99, 0);
   const combustivelCalculado = calculateFuelCost(kmTotais, carConfig);
 
@@ -144,19 +150,21 @@ export const getWeeklyAnalysis = (startDate: string, records: DailyRecord[], car
   if (combustivelCalculado > 0) {
     expensesByCategory['Combustível'] = (expensesByCategory['Combustível'] || 0) + combustivelCalculado;
   }
-  
+
   const kmExcedidos = Math.max(0, kmTotais - carConfig.limiteKmSemanal);
   const custoKmExcedido = kmExcedidos * carConfig.valorKmExcedido;
-  
-  const diasTrabalhados = weekRecords.length;
-  const aluguelProporcional = carConfig.aluguelSemanal > 0 && diasTrabalhados > 0 
-    ? (carConfig.aluguelSemanal / 7) * diasTrabalhados 
-    : 0;
-  
+
+  // Lógica para aluguel semanal proporcional dentro do contrato
+  let aluguelProporcional = 0;
+  if (carConfig.aluguelSemanal > 0 && carConfig.dataInicioContrato) {
+    const totalDaysInWeek = 7;
+    const daysInContractThisWeek = eachDayOfInterval({ start, end }).filter(day => isWithinContract(day, carConfig)).length;
+    aluguelProporcional = (carConfig.aluguelSemanal / totalDaysInWeek) * daysInContractThisWeek;
+  }
   if (aluguelProporcional > 0) {
     expensesByCategory['Aluguel Semanal'] = (expensesByCategory['Aluguel Semanal'] || 0) + aluguelProporcional;
   }
-  
+
   if (custoKmExcedido > 0) {
     expensesByCategory['KM Excedido'] = (expensesByCategory['KM Excedido'] || 0) + custoKmExcedido;
   }
@@ -165,7 +173,7 @@ export const getWeeklyAnalysis = (startDate: string, records: DailyRecord[], car
   const lucroLiquido = ganhosBrutos - gastosTotal;
   const tempoTotalTrabalhado = weekRecords.reduce((sum, record) => sum + record.tempoTrabalhado, 0);
   const ganhoPorHora = tempoTotalTrabalhado > 0 ? (lucroLiquido / (tempoTotalTrabalhado / 60)) : 0;
-  
+
   return {
     ganhosBrutos,
     ganhosUber,
@@ -192,7 +200,7 @@ export const getMonthlyAnalysis = (dateString: string, records: DailyRecord[], c
   const date = createLocalDate(dateString);
   const start = startOfMonth(date);
   const end = endOfMonth(date);
-  
+
   const monthRecords = records.filter(record => {
     const recordDate = createLocalDate(record.date);
     return isWithinInterval(recordDate, { start, end });
@@ -203,7 +211,7 @@ export const getMonthlyAnalysis = (dateString: string, records: DailyRecord[], c
   const ganhosBrutos = ganhosUber + ganhos99;
 
   const expensesByCategory: Record<string, number> = {};
-  
+
   const kmTotais = monthRecords.reduce((sum, record) => sum + record.kmRodadosUber + record.kmRodados99, 0);
   const combustivelCalculado = calculateFuelCost(kmTotais, carConfig);
 
@@ -218,16 +226,27 @@ export const getMonthlyAnalysis = (dateString: string, records: DailyRecord[], c
   if (combustivelCalculado > 0) {
     expensesByCategory['Combustível'] = (expensesByCategory['Combustível'] || 0) + combustivelCalculado;
   }
-  
+
   const numWeeksInMonth = Math.ceil((end.getDate() + start.getDay()) / 7);
-  const aluguelTotal = carConfig.aluguelSemanal * numWeeksInMonth;
+
+  // Lógica para aluguel mensal, considerando o período do contrato
+  let aluguelTotal = 0;
+  if (carConfig.aluguelSemanal > 0 && carConfig.dataInicioContrato) {
+    const monthDays = eachDayOfInterval({ start, end });
+    const daysInContractThisMonth = monthDays.filter(day => isWithinContract(day, carConfig)).length;
+
+    // Aluguel semanal multiplicado pelo número de semanas dentro do contrato no mês
+    const weeksInContractThisMonth = Math.ceil(daysInContractThisMonth / 7);
+    aluguelTotal = carConfig.aluguelSemanal * weeksInContractThisMonth;
+  }
+
   const kmExcedidos = Math.max(0, kmTotais - (carConfig.limiteKmSemanal * numWeeksInMonth));
   const custoKmExcedido = kmExcedidos * carConfig.valorKmExcedido;
-  
+
   if (aluguelTotal > 0) {
     expensesByCategory['Aluguel Mensal'] = (expensesByCategory['Aluguel Mensal'] || 0) + aluguelTotal;
   }
-  
+
   if (custoKmExcedido > 0) {
     expensesByCategory['KM Excedido'] = (expensesByCategory['KM Excedido'] || 0) + custoKmExcedido;
   }

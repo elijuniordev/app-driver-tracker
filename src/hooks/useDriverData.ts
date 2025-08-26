@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Database } from '@/integrations/supabase/types';
+import { createLocalDate } from '@/lib/utils';
 
 export interface CarConfig {
   modelo: string;
@@ -10,6 +11,8 @@ export interface CarConfig {
   valorKmExcedido: number;
   consumoKmL: number;
   precoCombustivel: number;
+  dataInicioContrato: string;
+  duracaoContratoDias: number;
 }
 
 export interface DailyRecord {
@@ -39,6 +42,8 @@ const defaultCarConfig: CarConfig = {
   valorKmExcedido: 0,
   consumoKmL: 10,
   precoCombustivel: 5.50,
+  dataInicioContrato: new Date().toISOString().split('T')[0],
+  duracaoContratoDias: 60,
 };
 
 export const useDriverData = () => {
@@ -75,7 +80,9 @@ export const useDriverData = () => {
           limiteKmSemanal: config.limite_km_semanal,
           valorKmExcedido: config.valor_km_excedido,
           consumoKmL: config.consumo_km_l,
-          precoCombustivel: config.preco_combustivel
+          precoCombustivel: config.preco_combustivel,
+          dataInicioContrato: config.data_inicio_contrato,
+          duracaoContratoDias: config.duracao_contrato_dias,
         });
       }
     } catch (error) {
@@ -86,7 +93,7 @@ export const useDriverData = () => {
   const fetchDailyRecords = useCallback(async () => {
     try {
       setLoading(true);
-      
+
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) {
         console.log('User not authenticated');
@@ -148,7 +155,7 @@ export const useDriverData = () => {
   const saveCarConfig = async (config: CarConfig) => {
     try {
       setLoading(true);
-      
+
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) {
         toast({
@@ -179,7 +186,9 @@ export const useDriverData = () => {
             limite_km_semanal: config.limiteKmSemanal,
             valor_km_excedido: config.valorKmExcedido,
             consumo_km_l: config.consumoKmL,
-            preco_combustivel: config.precoCombustivel
+            preco_combustivel: config.precoCombustivel,
+            data_inicio_contrato: config.dataInicioContrato,
+            duracao_contrato_dias: config.duracaoContratoDias,
           })
           .eq('user_id', user.id);
 
@@ -202,6 +211,8 @@ export const useDriverData = () => {
             valor_km_excedido: config.valorKmExcedido,
             consumo_km_l: config.consumoKmL,
             preco_combustivel: config.precoCombustivel,
+            data_inicio_contrato: config.dataInicioContrato,
+            duracao_contrato_dias: config.duracaoContratoDias,
             user_id: user.id
           });
 
@@ -217,7 +228,7 @@ export const useDriverData = () => {
       }
 
       setCarConfig(config);
-      
+
       toast({
         title: "Sucesso",
         description: "Configuração do veículo salva com sucesso!"
@@ -237,7 +248,7 @@ export const useDriverData = () => {
   const addDailyRecord = async (record: Omit<DailyRecord, 'id'>) => {
     try {
       setLoading(true);
-      
+
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) {
         toast({
@@ -247,7 +258,7 @@ export const useDriverData = () => {
         });
         return;
       }
-      
+
       const { data: entrada, error: entradaError } = await supabase
         .from('entradas_diarias')
         .insert({
@@ -294,7 +305,7 @@ export const useDriverData = () => {
       }
 
       await fetchDailyRecords();
-      
+
       toast({
         title: "Sucesso",
         description: "Registro salvo com sucesso!"
@@ -314,7 +325,7 @@ export const useDriverData = () => {
   const updateDailyRecord = async (id: number, record: Partial<DailyRecord>) => {
     try {
       setLoading(true);
-      
+
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) {
         toast({
@@ -335,7 +346,7 @@ export const useDriverData = () => {
       if (record.numeroCorridas99 !== undefined) updateData.numero_corridas_99 = record.numeroCorridas99;
       if (record.kmRodados99 !== undefined) updateData.km_rodados_99 = record.kmRodados99;
       if (record.tempoTrabalhado !== undefined) updateData.tempo_trabalhado = record.tempoTrabalhado;
-      
+
       if (record.kmRodadosUber !== undefined || record.kmRodados99 !== undefined) {
         const currentRecord = dailyRecords.find(r => r.id === id);
         if (currentRecord) {
@@ -364,7 +375,7 @@ export const useDriverData = () => {
       }
 
       await fetchDailyRecords();
-      
+
       toast({
         title: "Sucesso",
         description: "Registro atualizado com sucesso!"
@@ -384,7 +395,7 @@ export const useDriverData = () => {
   const deleteDailyRecord = async (id: number) => {
     try {
       setLoading(true);
-      
+
       const { data: { user }, error: authError } = await supabase.auth.getUser();
       if (authError || !user) {
         toast({
@@ -412,7 +423,7 @@ export const useDriverData = () => {
       }
 
       await fetchDailyRecords();
-      
+
       toast({
         title: "Sucesso",
         description: "Registro excluído com sucesso!"
@@ -461,31 +472,31 @@ export const useDriverData = () => {
   }, [dailyRecords]);
 
   const getWeeklyAnalysis = useCallback((startDate: string) => {
-    const start = new Date(startDate);
+    const start = createLocalDate(startDate);
     const dayOfWeek = start.getDay();
     const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
     start.setDate(start.getDate() + mondayOffset);
-    
+
     const end = new Date(start);
     end.setDate(start.getDate() + 6);
 
     const weekRecords = dailyRecords.filter(record => {
-      const recordDate = new Date(record.date);
+      const recordDate = createLocalDate(record.date);
       return recordDate >= start && recordDate <= end;
     });
 
     const ganhosUber = weekRecords.reduce((sum, record) => sum + record.ganhosUber, 0);
     const ganhos99 = weekRecords.reduce((sum, record) => sum + record.ganhos99, 0);
     const ganhosBrutos = ganhosUber + ganhos99;
-    
-    const gastosRegistrados = weekRecords.reduce((sum, record) => 
+
+    const gastosRegistrados = weekRecords.reduce((sum, record) =>
       sum + record.gastos.reduce((gastoSum, gasto) => gastoSum + gasto.valor, 0), 0
     );
-    
+
     const kmTotais = weekRecords.reduce((sum, record) => sum + record.kmRodadosUber + record.kmRodados99, 0);
     const kmExcedidos = Math.max(0, kmTotais - carConfig.limiteKmSemanal);
     const custoKmExcedido = kmExcedidos * carConfig.valorKmExcedido;
-    
+
     const gastosTotal = gastosRegistrados + carConfig.aluguelSemanal + custoKmExcedido;
     const lucroLiquido = ganhosBrutos - gastosTotal;
 

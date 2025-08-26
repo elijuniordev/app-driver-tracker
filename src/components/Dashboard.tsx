@@ -42,26 +42,29 @@ export const EnhancedDashboard = () => {
   if (analyzedData) {
     expensesByCategory = analyzedData.expensesByCategory;
   }
-
+  
   // Lógica corrigida para calcular as métricas com base no modo de visualização
   let totalTimeInHours = 0;
   let totalKm = 0;
   let ganhosUber = 0;
   let ganhos99 = 0;
   let totalExpenses = 0;
+  let netProfit = 0;
 
-  if (viewMode === 'daily' && analyzedData) {
+  if (viewMode === 'daily' && analyzedData && 'tempoTrabalhado' in analyzedData) {
     totalTimeInHours = (analyzedData.tempoTrabalhado || 0) / 60;
     totalKm = (analyzedData.kmRodados || 0);
     ganhosUber = analyzedData.ganhosUber || 0;
     ganhos99 = analyzedData.ganhos99 || 0;
     totalExpenses = analyzedData.gastosTotal || 0;
-  } else if ((viewMode === 'weekly' || viewMode === 'monthly') && analyzedData) {
+    netProfit = analyzedData.lucroLiquido || 0;
+  } else if ((viewMode === 'weekly' || viewMode === 'monthly') && analyzedData && 'tempoTotalTrabalhado' in analyzedData) {
     totalTimeInHours = (analyzedData.tempoTotalTrabalhado || 0) / 60;
     totalKm = (analyzedData.kmTotais || 0);
     ganhosUber = analyzedData.ganhosUber || 0;
     ganhos99 = analyzedData.ganhos99 || 0;
     totalExpenses = analyzedData.gastosTotal || 0;
+    netProfit = analyzedData.lucroLiquido || 0;
   }
 
   const today = new Date();
