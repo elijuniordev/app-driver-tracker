@@ -48,7 +48,7 @@ const calculateMetricsForPeriod = (
 
   const ganhosUber = records.reduce((sum, r) => sum + r.ganhosUber, 0);
   const ganhos99 = records.reduce((sum, r) => sum + r.ganhos99, 0);
-  const ganhosExtras = records.reduce((sum, r) => sum + r.ganhosExtras.reduce((eSum, e) => eSum + e.valor, 0), 0);
+  const ganhosExtras = records.reduce((sum, r) => sum + (r.ganhosExtras?.reduce((eSum, e) => eSum + e.valor, 0) || 0), 0);
   const ganhosBrutos = ganhosUber + ganhos99 + ganhosExtras;
   
   const kmTotais = records.reduce((sum, r) => sum + r.kmRodadosUber + r.kmRodados99, 0);
@@ -56,22 +56,18 @@ const calculateMetricsForPeriod = (
   const totalViagens = records.reduce((sum, r) => sum + r.numeroCorridasUber + r.numeroCorridas99, 0);
 
   const expensesByCategory: Record<string, number> = {};
-  const earningsByCategory: Record<string, number> = { 'Uber': ganhosUber, '99': ganhos99 };
+  const earningsByCategory: Record<string, number> = {};
+  if (ganhosUber > 0) earningsByCategory['Uber'] = ganhosUber;
+  if (ganhos99 > 0) earningsByCategory['99'] = ganhos99;
 
   records.forEach(record => {
-    record.gastos.forEach(gasto => {
+    record.gastos?.forEach(gasto => {
       expensesByCategory[gasto.categoria] = (expensesByCategory[gasto.categoria] || 0) + gasto.valor;
     });
     
-    record.ganhosExtras.forEach(ganho => {
+    record.ganhosExtras?.forEach(ganho => {
         earningsByCategory[ganho.categoria] = (earningsByCategory[ganho.categoria] || 0) + ganho.valor;
     });
-
-    const kmDoDia = record.kmRodadosUber + record.kmRodados99;
-    if (kmDoDia > 0 && record.consumoKmL > 0 && record.precoCombustivel > 0 && !record.gastos.some(g => g.categoria === 'Combustível')) {
-      const custoCombustivelDia = (kmDoDia / record.consumoKmL) * record.precoCombustivel;
-      expensesByCategory['Combustível'] = (expensesByCategory['Combustível'] || 0) + custoCombustivelDia;
-    }
   });
 
   if (carConfig.is_active) {

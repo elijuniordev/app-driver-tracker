@@ -9,17 +9,8 @@ interface ExpenseDistributionChartProps {
 
 export const ExpenseDistributionChart = ({ expensesByCategory }: ExpenseDistributionChartProps) => {
   const getExpenseDistributionData = () => {
-    const colors = [
-      'hsl(var(--destructive))',
-      'hsl(var(--warning))',
-      'hsl(var(--primary))',
-      'hsl(var(--graph1))',
-      'hsl(var(--graph2))',
-      'hsl(var(--graph3))',
-      'hsl(var(--info))',
-    ];
+    const colors = ['#ef4444', '#f97316', '#eab308', '#84cc16', '#22c55e', '#10b981'];
     const expenseEntries = Object.entries(expensesByCategory).filter(([, value]) => value > 0);
-
     return expenseEntries.map(([name, value], index) => ({
       name,
       value,
@@ -43,24 +34,12 @@ export const ExpenseDistributionChart = ({ expensesByCategory }: ExpenseDistribu
           <>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie
-                  data={data}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  label={({ name, percent }) => `${(percent * 100).toFixed(0)}%`}
-                  outerRadius={80}
-                  dataKey="value"
-                >
-                  {data.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
+                <Pie data={data} cx="50%" cy="50%" labelLine={false} outerRadius={80} dataKey="value">
+                  {data.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                 </Pie>
                 <Tooltip
                   contentStyle={{ backgroundColor: 'hsl(var(--popover))', borderColor: 'hsl(var(--border))', borderRadius: '0.5rem' }}
-                  itemStyle={{ color: 'hsl(var(--foreground))' }}
-                  formatter={(value: number, name: string) => [`${name}: R$ ${value.toFixed(2)}`, '']}
-                  labelFormatter={() => ''}
+                  formatter={(value: number, name: string) => [`R$ ${value.toFixed(2)} (${((value / totalExpenses) * 100).toFixed(0)}%)`, name]}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -75,18 +54,14 @@ export const ExpenseDistributionChart = ({ expensesByCategory }: ExpenseDistribu
                   </span>
                   <span className="font-medium">
                     R$ {expense.value.toFixed(2)}
-                    <span className="text-muted-foreground ml-2 text-xs">
-                      ({((expense.value / totalExpenses) * 100).toFixed(1)}%)
-                    </span>
+                    <span className="text-muted-foreground ml-2 text-xs">({((expense.value / totalExpenses) * 100).toFixed(1)}%)</span>
                   </span>
                 </div>
               ))}
             </div>
           </>
         ) : (
-          <div className="flex items-center justify-center h-[300px] text-muted-foreground">
-            Nenhum dado de gasto disponível.
-          </div>
+          <div className="flex items-center justify-center h-[300px] text-muted-foreground">Nenhum dado de gasto disponível.</div>
         )}
       </CardContent>
     </Card>
