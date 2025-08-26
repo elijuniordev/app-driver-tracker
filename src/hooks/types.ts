@@ -7,6 +7,7 @@ export interface CarConfig {
   precoCombustivel: number;
   dataInicioContrato: string;
   duracaoContratoDias: number;
+  metaGanhosSemanal: number; // Adicionar esta linha
 }
 
 export interface DailyRecord {

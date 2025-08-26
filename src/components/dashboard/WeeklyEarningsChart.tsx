@@ -41,7 +41,7 @@ export const WeeklyEarningsChart = ({
         dia: format(currentDate, "E", { locale: ptBR }),
         uber: dayData?.ganhosUber || 0,
         "99": dayData?.ganhos99 || 0,
-        gastos: dayData?.gastos || 0,
+        gastos: dayData?.gastosTotal || 0, // <<<---- CORREÇÃO AQUI
       });
     }
     return weekData;

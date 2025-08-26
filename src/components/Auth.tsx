@@ -1,125 +1,114 @@
-import { useState } from 'react';
+import { Auth } from '@supabase/auth-ui-react';
+import { ThemeSupa } from '@supabase/auth-ui-shared';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2 } from 'lucide-react';
+import { useEffect } from 'react';
 
-interface AuthProps {
-  onAuthSuccess: () => void;
-}
-
-export const Auth = ({ onAuthSuccess }: AuthProps) => {
-  const [isLoading, setIsLoading] = useState(false);
-  const [isSignUp, setIsSignUp] = useState(false);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+export const AuthComponent = () => {
   const { toast } = useToast();
 
-  const handleAuth = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-
-    try {
-      if (isSignUp) {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-        });
-        
-        if (error) throw error;
-        
-        toast({
-          title: "Conta criada!",
-          description: "Verifique seu email para confirmar a conta.",
-        });
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-        
-        if (error) throw error;
-        
-        toast({
-          title: "Login realizado!",
-          description: "Bem-vindo de volta!",
-        });
-        
-        onAuthSuccess();
+  useEffect(() => {
+    const { data: authListener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (event === 'SIGNED_IN') {
+          // Lógica para quando o usuário faz login
+        }
+        if (event === 'SIGNED_OUT') {
+          // Lógica para quando o usuário faz logout
+        }
       }
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Erro",
-        description: error.message || "Ocorreu um erro durante a autenticação",
-      });
-    } finally {
-      setIsLoading(false);
+    );
+
+    // Adiciona um listener para erros de autenticação via URL (ex: links mágicos)
+    const handleAuthError = () => {
+      const hash = window.location.hash;
+      if (hash.includes('error_description')) {
+        const params = new URLSearchParams(hash.substring(1)); // remove '#'
+        const errorDescription = params.get('error_description');
+        if (errorDescription) {
+            toast({
+                variant: "destructive",
+                title: "Erro de Autenticação",
+                description: decodeURIComponent(errorDescription.replace(/\+/g, ' ')),
+            });
+            // Limpa a URL para não mostrar o erro novamente
+            window.history.replaceState(null, '', window.location.pathname);
+        }
+      }
+    };
+    
+    handleAuthError();
+    window.addEventListener('hashchange', handleAuthError);
+
+    return () => {
+      authListener.subscription.unsubscribe();
+      window.removeEventListener('hashchange', handleAuthError);
+    };
+  }, [toast]);
+
+
+  const handlePasswordReset = async (email: string) => {
+    try {
+        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.origin,
+        });
+        if (error) throw error;
+        toast({
+            title: "Verifique seu e-mail",
+            description: "Um link para redefinir sua senha foi enviado.",
+        });
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Ocorreu um erro desconhecido.";
+        toast({
+            variant: "destructive",
+            title: "Erro ao redefinir senha",
+            description: errorMessage,
+        });
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="flex items-center justify-center min-h-screen p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">
-            {isSignUp ? 'Criar Conta' : 'Entrar'}
-          </CardTitle>
-          <CardDescription>
-            {isSignUp 
-              ? 'Crie uma conta para começar a rastrear seus ganhos' 
-              : 'Entre com suas credenciais para acessar seus dados'
-            }
-          </CardDescription>
+          <CardTitle className="text-2xl">Driver Tracker</CardTitle>
+          <CardDescription>Acesse sua conta para continuar</CardDescription>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleAuth} className="space-y-4">
-            <div className="space-y-2">
-              <Input
-                type="email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={isLoading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Input
-                type="password"
-                placeholder="Senha"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={isLoading}
-                minLength={6}
-              />
-            </div>
-            <Button 
-              type="submit" 
-              className="w-full" 
-              disabled={isLoading}
-            >
-              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isSignUp ? 'Criar Conta' : 'Entrar'}
-            </Button>
-          </form>
-          
-          <div className="mt-4 text-center">
-            <Button
-              variant="ghost"
-              onClick={() => setIsSignUp(!isSignUp)}
-              disabled={isLoading}
-              className="text-sm"
-            >
-              {isSignUp 
-                ? 'Já tem uma conta? Entre aqui' 
-                : 'Não tem conta? Crie uma aqui'
-              }
-            </Button>
-          </div>
+          <Auth
+            supabaseClient={supabase}
+            appearance={{ theme: ThemeSupa }}
+            theme="dark"
+            providers={['google']}
+            localization={{
+                variables: {
+                    sign_in: {
+                        email_label: 'Seu e-mail',
+                        password_label: 'Sua senha',
+                        button_label: 'Entrar',
+                        social_provider_text: 'Entrar com {{provider}}',
+                        link_text: 'Já tem uma conta? Entre',
+                    },
+                    sign_up: {
+                        email_label: 'Seu e-mail',
+                        password_label: 'Crie uma senha',
+                        button_label: 'Criar conta',
+                        social_provider_text: 'Entrar com {{provider}}',
+                        link_text: 'Não tem uma conta? Crie uma',
+                    },
+                    forgotten_password: {
+                        email_label: 'Seu e-mail',
+                        button_label: 'Enviar instruções',
+                        link_text: 'Esqueceu sua senha?',
+                    },
+                    update_password: {
+                        password_label: 'Nova senha',
+                        button_label: 'Atualizar senha',
+                    },
+                },
+            }}
+          />
         </CardContent>
       </Card>
     </div>

@@ -1,102 +1,80 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { Session } from '@supabase/supabase-js';
+import { AuthComponent } from '@/components/Auth'; // Correção 1: Nome do componente
+import { Navigation } from '@/components/Navigation';
+import { EnhancedDashboard } from '@/components/Dashboard';
+import { DailyRegistry } from '@/components/DailyRegistry';
+import { History } from '@/components/History';
+import { Vehicles } from '@/components/Vehicles';
 import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Navigation } from "@/components/Navigation";
-import { EnhancedDashboard } from "@/components/Dashboard";
-import { DailyRegistry } from "@/components/DailyRegistry";
-import { CarConfig } from "@/components/CarConfig";
-import { Auth } from "@/components/Auth";
-import { History } from "@/components/History";
-import { useDriverData } from "@/hooks/useDriverData";
-import { supabase } from "@/integrations/supabase/client";
-import { User } from "@supabase/supabase-js";
-import { Loader2 } from "lucide-react";
+import { useDriverData } from './hooks/useDriverData';
 
-const queryClient = new QueryClient();
+type ActiveTab = 'dashboard' | 'registro' | 'historico' | 'configuracoes';
 
-const App = () => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'registro' | 'configuracoes' | 'historico'>('registro');
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const { carConfig, saveCarConfig, addDailyRecord, fetchDailyRecords } = useDriverData();
+function App() {
+  const [session, setSession] = useState<Session | null>(null);
+  const [activeTab, setActiveTab] = useState<ActiveTab>('dashboard');
+  const { 
+    carConfig, 
+    allCarConfigs, 
+    dailyRecords, 
+    loading, 
+    // Correção 2: addDailyRecord não existe mais
+    upsertEarnings,
+    addExpense,
+    addExtraEarning,
+    saveCarConfig,
+    setActiveCarConfig,
+    deactivateCarConfig,
+    updateDailyRecord,
+    deleteDailyRecord
+  } = useDriverData();
 
   useEffect(() => {
-    // Check for existing session
-    const checkSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      setUser(session?.user ?? null);
-      setLoading(false);
-    };
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
 
-    checkSession();
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        // Fetch data when user logs in
-        fetchDailyRecords();
-      }
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
     });
 
     return () => subscription.unsubscribe();
-  }, [fetchDailyRecords]);
-
-  const handleAuthSuccess = () => {
-    // Data will be fetched automatically via auth state change
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <QueryClientProvider client={queryClient}>
-        <TooltipProvider>
-          <Auth onAuthSuccess={handleAuthSuccess} />
-          <Toaster />
-          <Sonner />
-        </TooltipProvider>
-      </QueryClientProvider>
-    );
-  }
+  }, []);
 
   const renderContent = () => {
     switch (activeTab) {
       case 'dashboard':
         return <EnhancedDashboard />;
       case 'registro':
-        return <DailyRegistry onSave={addDailyRecord} carConfig={carConfig} />;
+        // Correção 3: DailyRegistry não precisa mais de props
+        return <DailyRegistry />;
       case 'historico':
         return <History />;
       case 'configuracoes':
-        return <CarConfig config={carConfig} onSave={saveCarConfig} />;
+        return <Vehicles />;
       default:
-        return <DailyRegistry onSave={addDailyRecord} carConfig={carConfig} />;
+        // Correção 3: DailyRegistry não precisa mais de props
+        return <DailyRegistry />;
     }
   };
 
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <div className="min-h-screen bg-background">
-          <main className="relative">
-            {renderContent()}
-          </main>
-          <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
-        </div>
+  if (!session) {
+    return <AuthComponent />;
+  } else {
+    return (
+      <div className="min-h-screen bg-background text-foreground">
+        <main className="pb-16">
+          {renderContent()}
+        </main>
+        <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
         <Toaster />
-        <Sonner />
-      </TooltipProvider>
-    </QueryClientProvider>
-  );
-};
+      </div>
+    );
+  }
+}
 
 export default App;
